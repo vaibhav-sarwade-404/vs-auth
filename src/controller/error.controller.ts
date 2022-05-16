@@ -1,16 +1,16 @@
 import { Request, Response } from "express";
-
 import domService from "../service/dom.service";
+
 import pageService from "../service/page.service";
 import { QueryParams } from "../types/AuthorizeModel.types";
 
-export const loginPageLoadController = async (req: Request, res: Response) => {
+export const errorPageLoadController = async (req: Request, res: Response) => {
   const {
     client_id: clientId = "",
     redirect_uri: callbackURL = "",
     state = ""
   }: QueryParams = req.query;
-  const page = (await pageService.getHtmlForPage("login")) || "";
+  const page = await pageService.getHtmlForPage("error");
   const stringifiedDom = domService.parseDocAndInjectDataConfig(page, {
     clientId,
     callbackURL,

@@ -2,7 +2,8 @@ import {
   createCipheriv,
   randomFillSync,
   randomBytes,
-  createHash
+  createHash,
+  createDecipheriv
 } from "crypto";
 import log from "./logger";
 const algorithm = "aes-192-cbc";
@@ -20,28 +21,10 @@ type BufferEncoding =
   | "binary"
   | "hex";
 
-export const hash = (text: string = "") => {
+export const createSHA256 = (text: string = "") => {
   return toStringUrlSafeBase64(
-    createHash("sha1").update(text, "ascii").digest("base64")
+    createHash("sha265").update(text, "ascii").digest("base64")
   );
-};
-
-export const createCipher = async (
-  text: string,
-  key: string,
-  encoding: BufferEncoding
-): Promise<string> => {
-  const funcName = createCipher.name;
-  try {
-    const iv = randomFillSync(new Uint8Array(16));
-    const cipher = createCipheriv(algorithm, key, iv);
-    return toStringUrlSafeBase64(
-      `${cipher.update(text, "utf-8", encoding)}${cipher.final(encoding)}`
-    );
-  } catch (error) {
-    log.error(`${funcName}: Encryption failed, returning same text`);
-    return text;
-  }
 };
 
 export const generateRandomString = async () => {
@@ -59,3 +42,29 @@ export const toStringUrlSafeBase64 = (str: string): string =>
 
 export const toBase64 = (str: string): string =>
   Buffer.from(str).toString("base64");
+
+export const encrypt = (
+  text: string,
+  key: string,
+  encoding: BufferEncoding
+): string => {
+  const iv = randomBytes(16);
+
+  const cipher = createCipheriv(algorithm, key, iv);
+  const encrypted = Buffer.concat([cipher.update(text), cipher.final()]);
+  return `${encrypted.toString(encoding)}::${iv.toString("hex")}`;
+};
+
+export const decrypt = (
+  hash: string,
+  key: string,
+  encoding: BufferEncoding
+): string => {
+  const [encrypted, iv] = hash.split("::");
+  const decipher = createDecipheriv(algorithm, key, Buffer.from(iv, "hex"));
+  const decrpyted = Buffer.concat([
+    decipher.update(Buffer.from(encrypted, encoding)),
+    decipher.final()
+  ]);
+  return decrpyted.toString();
+};

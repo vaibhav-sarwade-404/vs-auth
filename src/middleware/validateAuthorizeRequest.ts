@@ -1,17 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 
-import AuthorizationError from "../model/authorizationError.Model";
+import AuthorizationError from "../model/AuthorizationError.Model";
 import authorizeService from "../service/authorize.service";
 import log from "../utils/logger";
 import constants from "../utils/constants";
 import { QueryParams } from "../types/AuthorizeModel.types";
 
-const validateAuthorize = async (
+const validateAuthorizeRequest = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const funcName = validateAuthorize.name;
+  const funcName = validateAuthorizeRequest.name;
   log.debug(
     `${funcName}: Validating /authorize request with query params : ${JSON.stringify(
       req.query
@@ -63,7 +63,7 @@ const validateAuthorize = async (
       return res
         .status(302)
         .redirect(
-          `/error/?error=${validationError.error}&error_description=${validationError.errorDescription}`
+          `/error/?client_id=${client_id}&state=${state}&error=${validationError.error}&error_description=${validationError.errorDescription}`
         );
     }
     return next();
@@ -75,4 +75,4 @@ const validateAuthorize = async (
   }
 };
 
-export default validateAuthorize;
+export default validateAuthorizeRequest;

@@ -1,6 +1,6 @@
 import authorizeModel from "../model/authorize.model";
 import { FindByClientIdOptions } from "../types/AuthorizeModel.types";
-import { createCipher } from "../utils/crypto";
+import { encrypt } from "../utils/crypto";
 
 const getClientByClientId = (
   clientId: string,
@@ -9,15 +9,13 @@ const getClientByClientId = (
   return authorizeModel.findByClientId(clientId, options);
 };
 
-const getEncryptedState = async (
-  state: string,
-  clientId: string
-): Promise<string> => {
-  return createCipher(
-    `${state}${clientId}${Date.now()}`,
+const getEncryptedState = (state: string, clientId: string): string => {
+  const encryptedText = encrypt(
+    JSON.stringify({ state, clientId, date: Date.now() }),
     process.env.STATE_ENCRYPTION_KEY || "",
     "base64"
   );
+  return encodeURIComponent(encryptedText);
 };
 
 export default {

@@ -1,5 +1,10 @@
 import mongoose, { Schema } from "mongoose";
-import { FindByClientIdState, StateDocument } from "../types/StateModel.types";
+
+import {
+  FindByClientIdState,
+  StateDocument,
+  UpdateStateDocument
+} from "../types/StateModel.types";
 import constants from "../utils/constants";
 import log from "../utils/logger";
 
@@ -17,7 +22,7 @@ const StateModel = mongoose.model(
   constants.COLlECTIONS.state
 );
 
-export const createStateDocument = async (
+const createStateDocument = async (
   _state: StateDocument
 ): Promise<StateDocument> => {
   const funcName = createStateDocument.name;
@@ -28,13 +33,13 @@ export const createStateDocument = async (
   });
 };
 
-export const updateStateDocument = async (
-  _state: StateDocument
+const updateStateDocument = async (
+  _state: UpdateStateDocument
 ): Promise<any> => {
   const funcName = updateStateDocument.name;
   return StateModel.updateOne(
     { $and: [{ clienId: _state.clientId }, { state: _state.state }] },
-    {},
+    { _state },
     { upsert: true }
   ).catch(err => {
     log.error(
@@ -43,20 +48,45 @@ export const updateStateDocument = async (
   });
 };
 
-const getStateDocByStateValAndClientId = async (
-  _state: FindByClientIdState
-): Promise<StateDocument> => {
-  const funcName = getStateDocByStateValAndClientId.name;
-  return StateModel.findOne(_state).catch(err => {
+const updateStateDocumentById = async (
+  _state: UpdateStateDocument
+): Promise<any> => {
+  const funcName = updateStateDocument.name;
+  return StateModel.updateOne(
+    { _id: _state._id },
+    { _state },
+    { upsert: true }
+  ).catch(err => {
     log.error(
-      `${funcName}: Something went wrong while update state document with error: ${err}`
+      `${funcName}: Something went wrong while update state document by id(${_state._id}) with error: ${err}`
     );
   });
 };
 
-export const isValidState = async (
+const findStateDocByStateValAndClientId = async (
   _state: FindByClientIdState
-): Promise<boolean> => {
-  const state = (await getStateDocByStateValAndClientId(_state)) || {};
-  return state.isValid || false;
+): Promise<StateDocument> => {
+  const funcName = findStateDocByStateValAndClientId.name;
+  return StateModel.findOne(_state).catch(err => {
+    log.error(
+      `${funcName}: Something went wrong while getting state document by state (${_state.state}) and client id${_state.clientId}  with error: ${err}`
+    );
+  });
+};
+
+const findStateById = async (_id: string) => {
+  const funcName = findStateById.name;
+  return StateModel.findOne({ _id }).catch(err =>
+    log.error(
+      `${funcName}: Something went wrong while getting state document by id(${_id}) with error: ${err}`
+    )
+  );
+};
+
+export default {
+  findStateDocByStateValAndClientId,
+  findStateById,
+  updateStateDocumentById,
+  updateStateDocument,
+  createStateDocument
 };

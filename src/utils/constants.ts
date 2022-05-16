@@ -3,7 +3,8 @@ const ERROR_STRINGS = {
   callbackMismatch: "Callback mismatch",
   unsupportedResponseType: "Unsupported response type",
   unknownClient: "Unknown Client",
-  invalidState: "Invalid state"
+  invalidState: "Invalid state",
+  notFound: "Not found"
 };
 
 const LOG_LEVEL = {
@@ -33,7 +34,9 @@ const COLlECTIONS = {
   users: "users",
   state: "state",
   tenant: "tenant",
-  clients: "clients"
+  clients: "clients",
+  pages: "pages",
+  cleanup: "cleanup"
 };
 
 export default {

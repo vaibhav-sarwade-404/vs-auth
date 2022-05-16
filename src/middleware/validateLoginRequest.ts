@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 
-import AuthorizationError from "../model/authorizationError.Model";
+import AuthorizationError from "../model/AuthorizationError.Model";
 import authorizeService from "../service/authorize.service";
 import log from "../utils/logger";
 import constants from "../utils/constants";
@@ -51,7 +51,7 @@ const validateLoginRequest = async (
         validationError.errorDescription = `${constants.ERROR_STRINGS.callbackMismatch} ${redirect_uri}`;
       } else {
         const isValidState = await stateService.isValidState({
-          state: decodeURIComponent(state),
+          state: state,
           clientId: client_id
         });
         if (!isValidState) {
@@ -73,7 +73,7 @@ const validateLoginRequest = async (
       return res
         .status(302)
         .redirect(
-          `/error/?error=${validationError.error}&error_description=${validationError.errorDescription}`
+          `/error/?client_id=${client_id}&state=${state}&error=${validationError.error}&error_description=${validationError.errorDescription}`
         );
     }
     return next();
