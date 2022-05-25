@@ -1,10 +1,14 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
+import authorizationcodeService from "../service/authorizationcode.service";
+import passwordService from "../service/password.service";
+import stateService from "../service/state.service";
 
 import usersService from "../service/users.service";
-import { SignupRequest } from "../types/Request.types";
+import { QueryParams } from "../types/AuthorizeRedirectModel";
+import { LoginRequest, SignupRequest } from "../types/Request";
 import log from "../utils/logger";
 
-const signup = async (req: Request, res: Response) => {
+const signup = async (req: Request, resp: Response) => {
   const funcName = signup.name;
   try {
     const {
@@ -14,8 +18,8 @@ const signup = async (req: Request, res: Response) => {
     }: SignupRequest = req.body || {};
     const user = await usersService.findUserByEmail(email);
     if (user) {
-      log.error(`${funcName} user already exist with email id( ${email} )`);
-      return res.status(400).json({
+      log.error(`${funcName}: user already exist with email id( ${email} )`);
+      return resp.status(400).json({
         validations: [{ fieldName: "email", fieldError: "user already exist" }]
       });
     }
@@ -24,14 +28,101 @@ const signup = async (req: Request, res: Response) => {
       password,
       meta_data
     });
-    return res.status(200).json(_user);
+    return resp.status(200).json(_user);
   } catch (error) {
-    return res.status(400).json({
+    return resp.status(400).json({
+      error: "something went wrong"
+    });
+  }
+};
+
+const login = async (req: Request, resp: Response) => {
+  const funcName = login.name;
+  const {
+    email = "",
+    password = "",
+    callbackURL,
+    clientId,
+    state
+  }: LoginRequest = req.body || {};
+  const referrerSearchParams = new URL(req.headers.referer || "").searchParams;
+  const codeChallenge = referrerSearchParams.get("code_challenge");
+  const codeChallengeMethod = referrerSearchParams.get("code_challenge_method");
+  try {
+    const user = await usersService.findUserByEmail(email);
+    const isValidPassword = await passwordService.comparePassword(
+      password,
+      user.password
+    );
+    if (isValidPassword) {
+      let formattedCallbackURL = new URL(callbackURL);
+      let decryptedState = "";
+
+      if (!req.stateDocument?.state) {
+        decryptedState = await stateService.getDecryptedState({
+          clientId,
+          state
+        });
+      } else {
+        decryptedState = stateService.decryptState(
+          decodeURIComponent(req.stateDocument.state)
+        );
+      }
+      const authorizationCodeDocument =
+        await authorizationcodeService.createAuthourizationCodeDocument(
+          JSON.stringify({
+            userId: user._id?.toString() || "",
+            clientId,
+            codeChallenge,
+            codeChallengeMethod
+          })
+        );
+      formattedCallbackURL.searchParams.set(
+        "code",
+        authorizationCodeDocument.id
+      );
+      formattedCallbackURL.searchParams.set("state", decryptedState);
+      log.info(
+        `${funcName}: login for user with email( ${email} ) was successful, returning user to callback`
+      );
+      const { user: sessionUser } = req.session;
+      req.session.regenerate(err => {
+        if (err) {
+          throw new Error(`While generating session error: ${err}`);
+        }
+        req.session.user = {
+          ...sessionUser,
+          userId: user._id?.toString() || "",
+          isAuthenticated: true
+        };
+        // save the session before redirection to ensure page
+        // load does not happen before session is saved
+        req.session.save(err => {
+          if (err) {
+            throw new Error(`While generating session error: ${err}`);
+          }
+          return resp.redirect(formattedCallbackURL.href);
+        });
+      });
+    } else {
+      log.info(
+        `${funcName}: login for user with email( ${email} ) was not successful, returning user to error`
+      );
+      return resp.status(403).json({
+        error: "Username or password is wrong"
+      });
+    }
+  } catch (error) {
+    log.error(
+      `${funcName}: Login failed for user with email( ${email} ) with error ${error}`
+    );
+    return resp.status(400).json({
       error: "something went wrong"
     });
   }
 };
 
 export default {
-  signup
+  signup,
+  login
 };

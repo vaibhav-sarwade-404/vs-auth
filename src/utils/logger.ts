@@ -1,9 +1,8 @@
-import config from "config";
 import dayjs from "dayjs";
 
 import constants from "./constants";
 
-const logLevel: string = config.get("logLevel") || "info";
+const logLevel: string = process.env.LOG_LEVEL || "info";
 const { CONSOLE_COLORS, LOG_LEVEL_COLOR, LOG_LEVEL } = constants;
 
 const formatMsg = (

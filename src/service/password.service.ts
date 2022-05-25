@@ -10,14 +10,16 @@ const hashPassword = async (password: string): Promise<string> | never => {
     return bcrypt.hash(password, salt);
   } catch (error) {
     log.error(
-      `${funcName} something went wrong while creating password hash (throwing error to prevent creating user) with error ${error}`
+      `${funcName}: something went wrong while creating password hash (throwing error to prevent creating user) with error ${error}`
     );
     throw new Error(`Password hashing failed`);
   }
 };
 
-const comparePassword = async (password: string, hash: string) =>
-  bcrypt.compareSync(password, hash);
+const comparePassword = async (
+  password: string,
+  hash: string
+): Promise<boolean> => bcrypt.compareSync(password, hash);
 
 export default {
   hashPassword,

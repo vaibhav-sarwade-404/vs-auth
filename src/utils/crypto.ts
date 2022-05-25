@@ -1,9 +1,9 @@
 import {
   createCipheriv,
-  randomFillSync,
   randomBytes,
   createHash,
-  createDecipheriv
+  createDecipheriv,
+  createHmac
 } from "crypto";
 import log from "./logger";
 const algorithm = "aes-192-cbc";
@@ -48,11 +48,18 @@ export const encrypt = (
   key: string,
   encoding: BufferEncoding
 ): string => {
-  const iv = randomBytes(16);
-
-  const cipher = createCipheriv(algorithm, key, iv);
-  const encrypted = Buffer.concat([cipher.update(text), cipher.final()]);
-  return `${encrypted.toString(encoding)}::${iv.toString("hex")}`;
+  const funcName = encrypt.name;
+  try {
+    const iv = randomBytes(16);
+    const cipher = createCipheriv(algorithm, key, iv);
+    const encrypted = Buffer.concat([cipher.update(text), cipher.final()]);
+    return `${encrypted.toString(encoding)}::${iv.toString("hex")}`;
+  } catch (error) {
+    log.error(
+      `${funcName}: Something went wrong while encryption with error: ${error}`
+    );
+    return text;
+  }
 };
 
 export const decrypt = (
@@ -60,6 +67,7 @@ export const decrypt = (
   key: string,
   encoding: BufferEncoding
 ): string => {
+  const funcName = decrypt.name;
   const [encrypted, iv] = hash.split("::");
   const decipher = createDecipheriv(algorithm, key, Buffer.from(iv, "hex"));
   const decrpyted = Buffer.concat([
@@ -67,4 +75,19 @@ export const decrypt = (
     decipher.final()
   ]);
   return decrpyted.toString();
+};
+
+export const generateHMAC = (text: string, secret: string): string => {
+  const funcName = generateHMAC.name;
+  try {
+    return createHmac("sha256", secret)
+      .update(text)
+      .digest("base64")
+      .replace(/\=+$/, "");
+  } catch (error) {
+    log.error(
+      `${funcName}: Something went wrong while generating HMAC with error: ${error}`
+    );
+    return text;
+  }
 };

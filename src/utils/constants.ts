@@ -36,7 +36,8 @@ const COLlECTIONS = {
   tenant: "tenant",
   clients: "clients",
   pages: "pages",
-  cleanup: "cleanup"
+  cleanup: "cleanup",
+  authorizationCode: "authorizationCode"
 };
 
 export default {

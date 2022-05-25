@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 
-import { FindByClientIdOptions } from "../types/AuthorizeModel.types";
+import { FindByClientIdOptions } from "../types/AuthorizeRedirectModel";
 import constants from "../utils/constants";
 import log from "../utils/logger";
 

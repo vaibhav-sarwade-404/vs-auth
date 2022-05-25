@@ -3,8 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import log from "../utils/logger";
 import RequestValidationError from "../model/RequestValidationError.Model";
 import stateService from "../service/state.service";
-import { SignupRequest } from "../types/Request.types";
-import { decrypt, decryptText } from "../utils/crypto";
+import { SignupRequest } from "../types/Request";
 
 const validateSignupRequest = async (
   req: Request,
@@ -14,7 +13,10 @@ const validateSignupRequest = async (
   const funcName = validateSignupRequest.name;
   log.debug(
     `${funcName}: Validating /users/signup request with payload params : ${JSON.stringify(
-      req.body
+      {
+        ...req.body,
+        password: "*********"
+      }
     )}`
   );
   try {
@@ -29,7 +31,7 @@ const validateSignupRequest = async (
     });
     if (validationError.error.length) {
       log.error(
-        `${funcName} /login request has some voilations : ${JSON.stringify(
+        `${funcName}: /users/signup request has some voilations : ${JSON.stringify(
           validationError.error
         )} `
       );
@@ -37,28 +39,29 @@ const validateSignupRequest = async (
     }
     const { clientId = "", state = "" }: SignupRequest = req.body || {};
 
-    const isValidState = await stateService.isValidState({
+    const stateDocument = await stateService.findStateByEncryptedState({
       state,
       clientId
     });
-    if (!isValidState) {
+    if (stateDocument && !stateDocument.isValid) {
       validationError.addError = {
         field: "state",
         error: "Invalid state"
       };
       log.error(
-        `${funcName} /login request has some voilations : ${JSON.stringify(
+        `${funcName}: /users/signup request has some voilations : ${JSON.stringify(
           validationError.error
         )} `
       );
-      return res.status(400).send(validationError.error);
+      return res.status(400).json(validationError.error);
     }
+    req.stateDocument = stateDocument;
     return next();
   } catch (error) {
     log.error(
-      `${funcName}: Failed to validated /login request with error ${error}`
+      `${funcName}: Failed to validated /users/signup request with error ${error}`
     );
-    return res.status(500).send({ error: `something went wrong` });
+    return res.status(500).json({ error: `something went wrong` });
   }
 };
 

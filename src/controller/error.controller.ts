@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import domService from "../service/dom.service";
 
 import pageService from "../service/page.service";
-import { QueryParams } from "../types/AuthorizeModel.types";
+import { QueryParams } from "../types/AuthorizeRedirectModel";
 
 export const errorPageLoadController = async (req: Request, res: Response) => {
   const {

@@ -1,18 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 
 import AuthorizationError from "../model/AuthorizationError.Model";
-import authorizeService from "../service/authorize.service";
+import authorizeService from "../service/authorizeRequest.service";
 import log from "../utils/logger";
 import constants from "../utils/constants";
-import { QueryParams } from "../types/AuthorizeModel.types";
-import stateService from "../service/state.service";
+import { QueryParams } from "../types/AuthorizeRedirectModel";
 
-const validateLoginRequest = async (
+const validateAuthorizeRequest = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const funcName = validateLoginRequest.name;
+  const funcName = validateAuthorizeRequest.name;
   log.debug(
     `${funcName}: Validating /authorize request with query params : ${JSON.stringify(
       req.query
@@ -49,15 +48,6 @@ const validateLoginRequest = async (
         validationError.errorDescription = `${constants.ERROR_STRINGS.unsupportedResponseType} ${response_type}`;
       } else if (!(client.allowedCallbackUrls || []).includes(redirect_uri)) {
         validationError.errorDescription = `${constants.ERROR_STRINGS.callbackMismatch} ${redirect_uri}`;
-      } else {
-        const isValidState = await stateService.isValidState({
-          state: state,
-          clientId: client_id
-        });
-        if (!isValidState) {
-          validationError.errorDescription =
-            constants.ERROR_STRINGS.invalidState;
-        }
       }
     } else {
       validationError.error = "invalid_request";
@@ -66,7 +56,7 @@ const validateLoginRequest = async (
 
     if (validationError.errorDescription) {
       log.error(
-        `${funcName}: /login request has some voilations : ${JSON.stringify(
+        `${funcName}: /authorize request has some voilations : ${JSON.stringify(
           validationError.errorAsObject
         )} `
       );
@@ -79,10 +69,10 @@ const validateLoginRequest = async (
     return next();
   } catch (error) {
     log.error(
-      `${funcName}: Failed to validated /login request with error ${error}`
+      `${funcName}: Failed to validated /authorize request with error ${error}`
     );
     return res.status(500).send({ error: `something went wrong` });
   }
 };
 
-export default validateLoginRequest;
+export default validateAuthorizeRequest;

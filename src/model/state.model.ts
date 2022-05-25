@@ -4,17 +4,20 @@ import {
   FindByClientIdState,
   StateDocument,
   UpdateStateDocument
-} from "../types/StateModel.types";
+} from "../types/StateModel";
 import constants from "../utils/constants";
 import log from "../utils/logger";
 
+const stateExpirtyInSeconds = Number(
+  process.env.STATE_EXPIRTY_IN_SECONDS || 3600
+);
 const StateSchema = new Schema(
   {
     clientId: { type: String, required: true },
     state: { type: String, required: true },
     isValid: { type: Boolean, required: true }
   },
-  { timestamps: true }
+  { timestamps: true, expireAfterSeconds: stateExpirtyInSeconds }
 );
 const StateModel = mongoose.model(
   "State",
@@ -74,12 +77,13 @@ const findStateDocByStateValAndClientId = async (
   });
 };
 
-const findStateById = async (_id: string) => {
+const findStateById = async (_id: string): Promise<StateDocument> => {
   const funcName = findStateById.name;
-  return StateModel.findOne({ _id }).catch(err =>
-    log.error(
-      `${funcName}: Something went wrong while getting state document by id(${_id}) with error: ${err}`
-    )
+  return StateModel.findOne({ _id: new mongoose.Types.ObjectId(_id) }).catch(
+    err =>
+      log.error(
+        `${funcName}: Something went wrong while getting state document by id(${_id}) with error: ${err}`
+      )
   );
 };
 

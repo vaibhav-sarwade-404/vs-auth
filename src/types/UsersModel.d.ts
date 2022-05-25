@@ -6,7 +6,7 @@ export type UsersDocument = {
   _id?: string;
   email: string;
   password: string;
-  meta_data: MetaData;
+  meta_data?: MetaData;
 };
 
 export type UpdateUserDocument = {

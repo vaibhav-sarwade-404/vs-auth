@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
-import { StateDocument, UpdateStateDocument } from "../types/StateModel.types";
-import { UpdateUserDocument, UsersDocument } from "../types/UsersModel.types";
+import { UpdateStateDocument } from "../types/StateModel";
+import { UpdateUserDocument, UsersDocument } from "../types/UsersModel";
 import constants from "../utils/constants";
 import log from "../utils/logger";
 
@@ -35,15 +35,15 @@ const UsersModel = mongoose.model(
 
 export const createUserDocument = async (
   user: UsersDocument
-): Promise<StateDocument> => {
+): Promise<UsersDocument> => {
   const funcName = createUserDocument.name;
   return UsersModel.create(user)
+    .then(_user => UsersModel.santitizeUserForResponse(_user))
     .catch(err => {
       log.error(
         `${funcName}: Something went wrong while creating user document with error: ${err}`
       );
-    })
-    .then(user => UsersModel.santitizeUserForResponse(user));
+    });
 };
 
 export const updateUsersDocument = async (

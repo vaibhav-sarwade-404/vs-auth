@@ -2,7 +2,7 @@ import mongoose, { Schema } from "mongoose";
 
 import constants from "../utils/constants";
 import log from "../utils/logger";
-import { PageDocument, PageNames } from "../types/PagesModel.types";
+import { PageDocument, PageNames } from "../types/PagesModel";
 
 const PageSchema = new Schema(
   {

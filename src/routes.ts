@@ -1,13 +1,14 @@
 import { Express, Request, Response } from "express";
 
-import validateAuthorizeRequest from "./middleware/validateAuthorizeRequest";
-import { handleAuthorize } from "./controller/authorize.controller";
-import validateLoginRequest from "./middleware/validateLoginRequest";
+import validateAuthorizeRequest from "./middleware/validateAuthorizeRequest.middleware";
+import { handleAuthorizeRequest } from "./controller/authorizeRedirect.controller";
+import validateLoginResourceHandlerRequest from "./middleware/validateLoginResourceHandlerRequest.middleware";
 import { loginPageLoadController } from "./controller/login.controller";
 import { errorPageLoadController } from "./controller/error.controller";
 import constants from "./utils/constants";
-import validateSignupRequest from "./middleware/validateSignupRequest";
+import validateSignupRequest from "./middleware/validateSignupRequest.middleware";
 import usersController from "./controller/users.controller";
+import sessionMiddleware from "./middleware/session.middleware";
 
 const routes = (app: Express) => {
   //Test health check
@@ -16,10 +17,20 @@ const routes = (app: Express) => {
   // });
 
   //authorize redirect
-  app.get("/authorize", validateAuthorizeRequest, handleAuthorize);
+  app.get(
+    "/authorize",
+    validateAuthorizeRequest,
+    sessionMiddleware,
+    handleAuthorizeRequest
+  );
 
   //login-page-load
-  app.get("/login", validateLoginRequest, loginPageLoadController);
+  app.get(
+    "/login",
+    validateLoginResourceHandlerRequest,
+    sessionMiddleware,
+    loginPageLoadController
+  );
 
   //error
   app.get("/error", errorPageLoadController);
@@ -29,6 +40,9 @@ const routes = (app: Express) => {
 
   //users/signup
   app.post("/users/signup", validateSignupRequest, usersController.signup);
+
+  //users/login
+  app.post("/users/login", validateSignupRequest, usersController.login);
 
   //all other routes return 404 not found
   app.get("/*", (req: Request, res: Response) =>

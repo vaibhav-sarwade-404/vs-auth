@@ -1,4 +1,4 @@
-import { Client } from "../model/authorize.model";
+import { Client } from "../model/client.model";
 
 export type ClientDocumentKeys = keyof typeof Client;
 export type FindByClientIdOptions = {
@@ -8,9 +8,9 @@ export type FindByClientIdOptions = {
 export interface QueryParams {
   client_id?: string;
   redirect_uri?: string;
-  response_type?: string;
-  code_chalenge?: string;
-  code_chalenge_method?: string;
-  scope?: string;
+  response_type?: string = "code";
+  code_challenge?: string;
+  code_challenge_method?: string = "plain";
+  scope?: string = "openid profile email";
   state?: string;
 }

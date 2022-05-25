@@ -3,7 +3,7 @@ import {
   updateCleanupDocument as _updateCleanupDocument,
   getDocumentsToClean as _getDocumentsToClean
 } from "../model/cleanup.model";
-import { CleanupDocument } from "../types/CleanupModel.types";
+import { CleanupDocument } from "../types/CleanupModel";
 import constants from "../utils/constants";
 import log from "../utils/logger";
 import stateService from "./state.service";
@@ -25,9 +25,9 @@ const cleanDocuments = async () => {
       (await getDocumentsToClean()) || [];
     if (documentsToClean.length) {
       documentsToClean.forEach(async documentToClean => {
-        const { collection, id } = documentToClean;
+        const { collectionName, id } = documentToClean;
         try {
-          if (collection === constants.COLlECTIONS.state) {
+          if (collectionName === constants.COLlECTIONS.cleanup) {
             await stateService.updateStateDocumentById({
               _id: id,
               isValid: false

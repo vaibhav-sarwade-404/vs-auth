@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import { CleanupDocument } from "../types/CleanupModel.types";
+import { CleanupDocument } from "../types/CleanupModel";
 
 import constants from "../utils/constants";
 import log from "../utils/logger";
@@ -16,7 +16,7 @@ const CleanupSchema = new Schema(
 const CleanupModel = mongoose.model(
   "Cleanup",
   CleanupSchema,
-  constants.COLlECTIONS.state
+  constants.COLlECTIONS.cleanup
 );
 
 export const createCleanupDocument = async (

@@ -2,11 +2,10 @@ import mongoose from "mongoose";
 
 import log from "./logger";
 
-const connect = () => {
+const connect = (connectionString: string) => {
   const funcName = connect.name;
 
-  const connectionString: string = process.env.DB_URL || "";
-  return mongoose
+  mongoose
     .connect(connectionString)
     .then(() => log.info(`${funcName}: DB connected`))
     .catch(err => {

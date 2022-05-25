@@ -1,6 +1,6 @@
 import { JSDOM } from "jsdom";
-import { LoginPageConfig } from "../types/Config.types";
-import { PageDocument } from "../types/PagesModel.types";
+import { LoginPageConfig } from "../types/LoginPageInjectConfig";
+import { PageDocument } from "../types/PagesModel";
 
 import { toBase64 } from "../utils/crypto";
 
