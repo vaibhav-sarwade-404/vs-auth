@@ -19,6 +19,7 @@ const validateSignupRequest = async (
       }
     )}`
   );
+  const { clientId = "", state = "" }: SignupRequest = req.body || {};
   try {
     const validationError = new RequestValidationError();
     ["clientId", "callbackURL", "state", "email", "password"].forEach(field => {
@@ -37,13 +38,11 @@ const validateSignupRequest = async (
       );
       return res.status(400).send(validationError.error);
     }
-    const { clientId = "", state = "" }: SignupRequest = req.body || {};
-
-    const stateDocument = await stateService.findStateByEncryptedState({
-      state,
+    const stateDocument = await stateService.findStateByEncryptedStateId({
+      id: state,
       clientId
     });
-    if (stateDocument && !stateDocument.isValid) {
+    if (!stateDocument) {
       validationError.addError = {
         field: "state",
         error: "Invalid state"

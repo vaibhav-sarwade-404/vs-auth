@@ -37,7 +37,9 @@ const COLlECTIONS = {
   clients: "clients",
   pages: "pages",
   cleanup: "cleanup",
-  authorizationCode: "authorizationCode"
+  authorizationCode: "authorizationCode",
+  refreshToken: "refreshToken",
+  logs: "logs"
 };
 
 export default {

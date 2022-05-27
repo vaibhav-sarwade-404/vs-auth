@@ -1,5 +1,4 @@
 import mongoose, { Schema } from "mongoose";
-import uid from "uid-safe";
 
 import {
   AuthorizationCodeDocument,
@@ -11,33 +10,39 @@ import log from "../utils/logger";
 
 const AuthorizationCodeSchema = new Schema(
   {
-    id: { type: String, required: true, unique: true },
     payload: { type: String, required: true },
     createdAt: {
       type: Date,
-      // expires: `${
-      //   process.env.AUTHORIZATION_CODE_EXPIRTY_IN_SECS || 12000000000
-      // }s`,
+      expires: `${process.env.AUTHORIZATION_CODE_EXPIRTY_IN_SECS || 120}s`,
       default: Date.now
     }
   },
   {
     timestamps: true,
-    autoCreate: true
-    // expireAfterSeconds: Number(
-    //   process.env.AUTHORIZATION_CODE_EXPIRTY_IN_SECS || 12000000000
-    // )
+    autoCreate: true,
+    expireAfterSeconds: Number(
+      process.env.AUTHORIZATION_CODE_EXPIRTY_IN_SECS || 120
+    )
   }
 );
 
 AuthorizationCodeSchema.pre("save", async function (next) {
-  this.id = `${uid.sync(10)}.${this.id}`;
   this.payload = encrypt(
     this.payload,
     process.env.AUTHORIZATION_CODE_ENCRYPTION_KEY || "",
     "base64"
   );
   next();
+});
+
+AuthorizationCodeSchema.post("save", async function () {
+  const encryptedCode = encrypt(
+    this._id.toString(),
+    process.env.AUTHORIZATION_CODE_ENCRYPTION_KEY || "",
+    "base64"
+  );
+  // this.code = encodeURIComponent(encryptedCode);
+  this.code = encryptedCode;
 });
 
 AuthorizationCodeSchema.statics.parseAuthorizationCodeDocument = (
@@ -76,11 +81,13 @@ const findAuthorizationCodeDocumentById = (
 ): Promise<ParsedAuthorizationCodeDocument> => {
   const funcName = findAuthorizationCodeDocumentById.name;
   return AuthorizationCodeModel.findOne({ id })
-    .then(authorizationCodeDocument =>
-      AuthorizationCodeModel.parseAuthorizationCodeDocument(
-        authorizationCodeDocument
-      )
-    )
+    .then(authorizationCodeDocument => {
+      if (authorizationCodeDocument)
+        return AuthorizationCodeModel.parseAuthorizationCodeDocument(
+          authorizationCodeDocument
+        );
+      return authorizationCodeDocument;
+    })
     .catch(err => {
       log.error(
         `${funcName}: Something went wrong while getting authorization code document by id (${id}) with error: ${err}`
@@ -88,10 +95,10 @@ const findAuthorizationCodeDocumentById = (
     });
 };
 
-const createAuthorizationCodeDocumentBy = (
+const createAuthorizationCodeDocument = (
   authorizationCodeDocument: AuthorizationCodeDocument
-): Promise<AuthorizationCodeDocument> => {
-  const funcName = createAuthorizationCodeDocumentBy.name;
+): Promise<ParsedAuthorizationCodeDocument> => {
+  const funcName = createAuthorizationCodeDocument.name;
   return AuthorizationCodeModel.create(authorizationCodeDocument).catch(err => {
     log.error(
       `${funcName}: Something went wrong while creating authorization code document for payload (${JSON.stringify(
@@ -112,6 +119,6 @@ const deleteAuthorizationCodeDocumentById = (id: string): Promise<any> => {
 
 export default {
   findAuthorizationCodeDocumentById,
-  createAuthorizationCodeDocumentBy,
+  createAuthorizationCodeDocument,
   deleteAuthorizationCodeDocumentById
 };

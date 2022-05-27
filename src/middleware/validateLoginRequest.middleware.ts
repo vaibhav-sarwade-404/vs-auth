@@ -19,6 +19,11 @@ const validateLoginRequest = async (
       }
     )}`
   );
+  const {
+    clientId = "",
+    state = "",
+    email = ""
+  }: SignupRequest = req.body || {};
   try {
     const validationError = new RequestValidationError();
     ["clientId", "callbackURL", "state", "email", "password"].forEach(field => {
@@ -37,10 +42,9 @@ const validateLoginRequest = async (
       );
       return res.status(400).send(validationError.error);
     }
-    const { clientId = "", state = "" }: SignupRequest = req.body || {};
 
     const isValidState = await stateService.isValidState({
-      state,
+      id: state,
       clientId
     });
     if (!isValidState) {

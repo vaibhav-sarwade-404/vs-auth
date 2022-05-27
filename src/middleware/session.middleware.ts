@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 
 import authorizationcodeService from "../service/authorizationcode.service";
+import logService from "../service/log.service";
 import { QueryParams } from "../types/AuthorizeRedirectModel";
 import log from "../utils/logger";
 
@@ -12,7 +13,8 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
     code_challenge: codeChallenge = "",
     code_challenge_method: codeChallengeMethod = "",
     response_type = "code",
-    state = ""
+    state = "",
+    scope = ""
   }: QueryParams = req.query;
   try {
     const clientIp =
@@ -32,14 +34,27 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
               userId,
               clientId,
               codeChallenge,
-              codeChallengeMethod
+              codeChallengeMethod,
+              callbackURL: callbackURL || "",
+              scope
             });
           formattedCallbackURL.searchParams.set(
             "code",
-            authorizationCodeDocument.id
+            authorizationCodeDocument.code || ""
           );
           formattedCallbackURL.searchParams.set("state", state);
           log.info(`session is valid for user, redirecting to callback`);
+          if (req.logDocument) {
+            req.logDocument = {
+              ...req.logDocument,
+              type: "success_code_exchange",
+              decription:
+                "Authorization code is successfully exchanged with tokens",
+              client_id: clientId,
+              user_id: userId
+            };
+            logService.createLogEvent(req.logDocument);
+          }
           return resp.redirect(formattedCallbackURL.href);
         }
         //TO-DO: Other reponse types

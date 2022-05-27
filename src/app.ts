@@ -8,6 +8,7 @@ import log from "./utils/logger";
 import connect from "./utils/connect";
 import routes from "./routes";
 import dotenv from "dotenv";
+import logMiddleware from "./middleware/log.middleware";
 
 dotenv.config({ path: path.join(__dirname, `../.env.common`) });
 const port = process.env.PORT || 3001;
@@ -34,6 +35,8 @@ app.use(
     name: "vs-auth"
   })
 );
+
+app.use(logMiddleware);
 
 app.listen(port, () => {
   log.info(`App is running at http://localhost:${port}`);

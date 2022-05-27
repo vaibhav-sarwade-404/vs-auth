@@ -12,6 +12,8 @@ import sessionMiddleware from "./middleware/session.middleware";
 import tokenMiddleware from "./middleware/token.middleware";
 import csurf from "csurf";
 import oauthController from "./controller/oauth.controller";
+import validateLoginRequest from "./middleware/validateLoginRequest.middleware";
+import requestValidatorMiddleware from "./middleware/requestValidator.middleware";
 
 const routes = (app: Express) => {
   //Test health check
@@ -57,14 +59,20 @@ const routes = (app: Express) => {
   app.post(
     "/users/login",
     csrfMiddleware,
-    validateSignupRequest,
+    validateLoginRequest,
     usersController.login
   );
 
   app.post("/oauth/token", tokenMiddleware, oauthController.token);
 
+  app.get(
+    "/userinfo",
+    requestValidatorMiddleware.validateUserInfoRequest,
+    oauthController.userinfo
+  );
+
   //all other routes return 404 not found
-  app.get("/*", (req: Request, res: Response) =>
+  app.get("/*", (_req: Request, res: Response) =>
     res.status(404).send(constants.ERROR_STRINGS.notFound)
   );
 };

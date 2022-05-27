@@ -6,25 +6,54 @@ import {
   UpdateStateDocument
 } from "../types/StateModel";
 import constants from "../utils/constants";
-import { encrypt } from "../utils/crypto";
+import { decrypt, encrypt } from "../utils/crypto";
 import log from "../utils/logger";
 
 const StateSchema = new Schema(
   {
     clientId: { type: String, required: true },
     state: { type: String, required: true },
-    isValid: { type: Boolean, required: true },
     createdAt: {
       type: Date,
-      expires: `${process.env.STATE_EXPIRTY_IN_SECONDS || 3600}s`,
+      expires: `${process.env.STATE_EXPIRTY_IN_SECONDS || 86400}s`,
       default: Date.now
     }
   },
   {
     timestamps: true,
-    expireAfterSeconds: Number(process.env.STATE_EXPIRTY_IN_SECONDS || 3600)
+    expireAfterSeconds: Number(process.env.STATE_EXPIRTY_IN_SECONDS || 86400)
   }
 );
+
+StateSchema.statics.parseStateDocument = (stateDocument: StateDocument) => {
+  const funcName = `StateSchema.statics.parseStateDocument`;
+  try {
+    if (stateDocument) {
+      const decryptedState = decrypt(
+        stateDocument.state,
+        process.env.STATE_ENCRYPTION_KEY || "",
+        "base64"
+      );
+      stateDocument.state = decryptedState;
+      return stateDocument;
+    }
+  } catch (error) {
+    log.error(
+      `${funcName}: something went wrong while decrypting and parsing state with error ${error}`
+    );
+  }
+  return stateDocument;
+};
+
+StateSchema.pre("save", async function (next) {
+  this.state = encrypt(
+    this.state,
+    process.env.STATE_ENCRYPTION_KEY || "",
+    "base64"
+  );
+  next();
+});
+
 const StateModel = mongoose.model(
   "State",
   StateSchema,
@@ -38,13 +67,14 @@ const createStateDocument = async (
   return StateModel.create(_state)
     .then(stateDocument => {
       const encryptedId = encrypt(
-        stateDocument.id?.toString(),
+        stateDocument._id?.toString(),
         process.env.STATE_ENCRYPTION_KEY || "",
         "base64"
       );
       return {
         ...stateDocument,
-        _id: encodeURIComponent(encryptedId)
+        // _id: encodeURIComponent(encryptedId)
+        _id: encryptedId
       };
     })
     .catch(err => {
@@ -59,7 +89,7 @@ const updateStateDocument = async (
 ): Promise<any> => {
   const funcName = updateStateDocument.name;
   return StateModel.updateOne(
-    { $and: [{ clienId: _state.clientId }, { state: _state.state }] },
+    { $and: [{ clientId: _state.clientId }, { state: _state.state }] },
     { _state },
     { upsert: true }
   ).catch(err => {
@@ -88,19 +118,38 @@ const findStateDocByStateValAndClientId = async (
   _state: FindByClientIdState
 ): Promise<StateDocument> => {
   const funcName = findStateDocByStateValAndClientId.name;
-  return StateModel.findOne(_state).catch(err => {
-    log.error(
-      `${funcName}: Something went wrong while getting state document by state (${_state.state}) and client id${_state.clientId}  with error: ${err}`
-    );
-  });
+  return StateModel.findOne(_state)
+    .then(stateDocument => {
+      if (stateDocument) return StateModel.parseStateDocument(stateDocument);
+      return stateDocument;
+    })
+    .catch(err => {
+      log.error(
+        `${funcName}: Something went wrong while getting state document by state (${_state.state}) and client id${_state.clientId}  with error: ${err}`
+      );
+    });
 };
 
 const findStateById = async (_id: string): Promise<StateDocument> => {
   const funcName = findStateById.name;
-  return StateModel.findOne({ _id: new mongoose.Types.ObjectId(_id) }).catch(
-    err =>
+  return StateModel.findOne({ _id: new mongoose.Types.ObjectId(_id) })
+    .then(stateDocument => {
+      if (stateDocument) return StateModel.parseStateDocument(stateDocument);
+      return stateDocument;
+    })
+    .catch(err =>
       log.error(
         `${funcName}: Something went wrong while getting state document by id(${_id}) with error: ${err}`
+      )
+    );
+};
+
+const deleteStateById = async (_id: string): Promise<any> => {
+  const funcName = deleteStateById.name;
+  return StateModel.deleteOne({ _id: new mongoose.Types.ObjectId(_id) }).catch(
+    err =>
+      log.error(
+        `${funcName}: Something went wrong while deleting state document by id(${_id}) with error: ${err}`
       )
   );
 };
@@ -110,5 +159,6 @@ export default {
   findStateById,
   updateStateDocumentById,
   updateStateDocument,
-  createStateDocument
+  createStateDocument,
+  deleteStateById
 };

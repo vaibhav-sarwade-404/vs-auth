@@ -1,3 +1,4 @@
+import { GrantTypes } from "./TokenModel";
 import { MetaData } from "./UsersModel";
 
 export interface SignupRequest {
@@ -20,10 +21,11 @@ export interface LoginRequest {
 }
 
 export interface TokenRequest {
-  grant_type: string;
+  grant_type: GrantTypes;
   client_id: string;
-  code_verifier: string;
-  code: string;
   redirect_uri: string;
-  scope: string;
+  scope: string = "openid profile email offline_access";
+  code_verifier?: string;
+  code?: string;
+  refresh_token?: string;
 }

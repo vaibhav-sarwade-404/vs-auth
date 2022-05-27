@@ -1,10 +1,9 @@
 import authorizationcodeModel from "../model/authorizationcode.model";
 import {
-  AuthorizationCodeDocument,
   AuthorizationCodePayload,
   ParsedAuthorizationCodeDocument
 } from "../types/AuthorizationCodeModel";
-import { createSHA256, generateHMAC } from "../utils/crypto";
+import { createSHA256 } from "../utils/crypto";
 import log from "../utils/logger";
 
 const getAuthourizationCodeDocumentById = async (
@@ -21,14 +20,9 @@ const deleteAuthourizationCodeDocumentById = async (
 
 const createAuthourizationCodeDocument = async (
   payload: AuthorizationCodePayload
-): Promise<AuthorizationCodeDocument> => {
+): Promise<ParsedAuthorizationCodeDocument> => {
   const stringifiedPayload = JSON.stringify(payload);
-  const id = generateHMAC(
-    stringifiedPayload,
-    process.env.AUTHORIZATION_CODE_ENCRYPTION_KEY || ""
-  );
-  return authorizationcodeModel.createAuthorizationCodeDocumentBy({
-    id,
+  return authorizationcodeModel.createAuthorizationCodeDocument({
     payload: stringifiedPayload
   });
 };
@@ -52,7 +46,7 @@ const isCodeVerifierValid = async (
     }
   } catch (error) {
     log.error(
-      `${funcName}: Something went wrong while fetching and validating Authorization code ${id} with error:${error}`
+      `${funcName}: Something went wrong while fetching and validating Authorization code ${authorizationCodeDocument.code} with error:${error}`
     );
   }
   return false;

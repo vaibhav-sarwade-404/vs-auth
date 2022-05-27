@@ -2,7 +2,6 @@ export type StateDocument = {
   _id?: string;
   clientId: string;
   state: string;
-  isValid: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 };
@@ -15,8 +14,9 @@ export type UpdateStateDocument = {
 };
 
 export type FindByClientIdState = {
+  id: string;
   clientId: string;
-  state: string;
+  state?: string;
   createdAt?: Date;
   updatedAt?: Date;
 };

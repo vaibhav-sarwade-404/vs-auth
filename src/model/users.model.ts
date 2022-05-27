@@ -38,7 +38,10 @@ export const createUserDocument = async (
 ): Promise<UsersDocument> => {
   const funcName = createUserDocument.name;
   return UsersModel.create(user)
-    .then(_user => UsersModel.santitizeUserForResponse(_user))
+    .then(_user => {
+      if (_user) return UsersModel.santitizeUserForResponse(_user);
+      return _user;
+    })
     .catch(err => {
       log.error(
         `${funcName}: Something went wrong while creating user document with error: ${err}`

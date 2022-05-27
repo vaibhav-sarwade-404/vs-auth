@@ -1,17 +1,17 @@
-export type AuthorizationCodeDocument = {
-  id: string;
-  payload: string;
-};
-
 export type AuthorizationCodePayload = {
   userId: string;
   clientId: string;
   codeChallenge: string;
   codeChallengeMethod: string;
   callbackURL: string;
+  scope: string = "openid profile email";
+};
+
+export type AuthorizationCodeDocument = {
+  payload: string;
 };
 
 export type ParsedAuthorizationCodeDocument = {
-  id: string;
+  code: string;
   payload: AuthorizationCodePayload;
 };

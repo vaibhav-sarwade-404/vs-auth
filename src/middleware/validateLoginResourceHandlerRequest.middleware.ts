@@ -6,6 +6,7 @@ import log from "../utils/logger";
 import constants from "../utils/constants";
 import { QueryParams } from "../types/AuthorizeRedirectModel";
 import stateService from "../service/state.service";
+import logService from "../service/log.service";
 
 const validateLoginResourceHandlerRequest = async (
   req: Request,
@@ -50,7 +51,7 @@ const validateLoginResourceHandlerRequest = async (
         validationError.errorDescription = `${constants.ERROR_STRINGS.callbackMismatch} ${redirect_uri}`;
       } else {
         const isValidState = await stateService.isValidState({
-          state: state,
+          id: state,
           clientId: client_id
         });
         if (!isValidState) {
@@ -64,6 +65,11 @@ const validateLoginResourceHandlerRequest = async (
     }
 
     if (validationError.errorDescription) {
+      if (req.logDocument) {
+        req.logDocument.type = validationError.error || "unauthorized";
+        req.logDocument.decription = validationError.errorDescription;
+        logService.createLogEvent(req.logDocument);
+      }
       log.error(
         `${funcName}: /login request has some voilations : ${JSON.stringify(
           validationError.errorAsObject

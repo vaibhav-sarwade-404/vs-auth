@@ -10,13 +10,11 @@ export const handleAuthorizeRequest = async (req: Request, resp: Response) => {
   const _defaultState = uid.sync(20);
   const { state = _defaultState, client_id: clientId = "" }: QueryParams =
     req.query;
-  const encryptedState = stateService.encryptState(state);
-  let returnState = encryptedState;
+  let returnState = _defaultState;
   if (state) {
     const stateDocument = await stateService.createStateDocument({
       clientId,
-      state: encryptedState,
-      isValid: true
+      state
     });
     if (stateDocument && stateDocument._id) {
       returnState = stateDocument._id;

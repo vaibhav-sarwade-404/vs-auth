@@ -5,7 +5,6 @@ import {
   createDecipheriv,
   createHmac
 } from "crypto";
-import { buffer } from "stream/consumers";
 import log from "./logger";
 const algorithm = "aes-192-cbc";
 
@@ -44,6 +43,12 @@ export const toStringUrlSafeBase64 = (str: string): string =>
 export const toBase64 = (str: string): string =>
   Buffer.from(str).toString("base64");
 
+export const customEncode = (base64edString: string = "") =>
+  base64edString.replace(/\//g, "-").replace(/\+/g, "_").replace(/=/g, "~");
+
+export const customDecode = (base64edString: string = "") =>
+  base64edString.replace(/-/g, "/").replace(/_/g, "+").replace(/~/g, "=");
+
 export const encrypt = (
   text: string,
   key: string,
@@ -54,7 +59,9 @@ export const encrypt = (
     const iv = randomBytes(16);
     const cipher = createCipheriv(algorithm, key, iv);
     const encrypted = Buffer.concat([cipher.update(text), cipher.final()]);
-    return `${encrypted.toString(encoding)}::${iv.toString("hex")}`;
+    return customEncode(
+      `${iv.toString("base64")}.${encrypted.toString(encoding)}`
+    );
   } catch (error) {
     log.error(
       `${funcName}: Something went wrong while encryption with error: ${error}`
@@ -68,9 +75,8 @@ export const decrypt = (
   key: string,
   encoding: BufferEncoding
 ): string => {
-  const funcName = decrypt.name;
-  const [encrypted, iv] = hash.split("::");
-  const decipher = createDecipheriv(algorithm, key, Buffer.from(iv, "hex"));
+  const [iv, encrypted] = customDecode(hash).split(".");
+  const decipher = createDecipheriv(algorithm, key, Buffer.from(iv, "base64"));
   const decrpyted = Buffer.concat([
     decipher.update(Buffer.from(encrypted, encoding)),
     decipher.final()

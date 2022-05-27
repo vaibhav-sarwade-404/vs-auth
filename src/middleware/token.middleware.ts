@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import authorizationcodeService from "../service/authorizationcode.service";
-import { ParsedAuthorizationCodeDocument } from "../types/AuthorizationCodeModel";
 
+import authorizationcodeService from "../service/authorizationcode.service";
+import refreshTokenService from "../service/refreshToken.service";
+import { ParsedAuthorizationCodeDocument } from "../types/AuthorizationCodeModel";
+import { ParsedRefreshTokenDocument } from "../types/RefreshTokenModel";
 import { TokenRequest } from "../types/Request";
 import log from "../utils/logger";
 
@@ -13,6 +15,7 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
     redirect_uri: callbackURL,
     code_verifier: codeVerifier = "",
     code = "",
+    refresh_token = "",
     scope = ""
   }: TokenRequest = req.body;
   try {
@@ -45,6 +48,29 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
       );
       return resp.status(403).json({
         error: "Invalid Authorization code"
+      });
+    } else if (grantType === "refresh_token" && refresh_token) {
+      const refreshTokenDocument: ParsedRefreshTokenDocument =
+        await refreshTokenService.getRefreshTokenDocument(refresh_token);
+      if (refreshTokenDocument) {
+        if (
+          refreshTokenDocument.clientId === clientId &&
+          refreshTokenDocument.payload.callbackURL === callbackURL
+        ) {
+          req.session.user = {
+            ...(req.session.user || {}),
+            userId: (refreshTokenDocument.payload || {}).userId,
+            scope,
+            isAuthenticated: true
+          };
+          return next();
+        }
+      }
+      log.info(
+        `${funcName}: validation failed for refresh token returning invalid refresh token error`
+      );
+      return resp.status(403).json({
+        error: "Invalid refresh token"
       });
     }
   } catch (error) {

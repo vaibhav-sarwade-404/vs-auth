@@ -1,10 +1,12 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import authorizationcodeService from "../service/authorizationcode.service";
 import passwordService from "../service/password.service";
 import stateService from "../service/state.service";
 
 import usersService from "../service/users.service";
+import { QueryParams } from "../types/AuthorizeRedirectModel";
 import { LoginRequest, SignupRequest } from "../types/Request";
+import { StateDocument } from "../types/StateModel";
 import log from "../utils/logger";
 
 const signup = async (req: Request, resp: Response) => {
@@ -44,6 +46,7 @@ const login = async (req: Request, resp: Response) => {
     clientId,
     state
   }: LoginRequest = req.body || {};
+  const { scope = "" }: QueryParams = req.query || {};
   const referrerSearchParams = new URL(req.headers.referer || "").searchParams;
   const codeChallenge = referrerSearchParams.get("code_challenge") || "";
   const codeChallengeMethod =
@@ -56,16 +59,21 @@ const login = async (req: Request, resp: Response) => {
     );
     if (isValidPassword) {
       let formattedCallbackURL = new URL(callbackURL);
-      let decryptedState = "";
+      let decryptedState = "",
+        stateDocument: StateDocument;
 
       if (!req.stateDocument?.state) {
-        decryptedState = await stateService.getDecryptedState({
-          clientId,
-          state
+        stateDocument = await stateService.findStateByEncryptedStateId({
+          id: state,
+          clientId
         });
+        if (stateDocument) {
+          decryptedState = stateDocument.state;
+        }
       } else {
         decryptedState = stateService.decryptState(
-          decodeURIComponent(req.stateDocument.state)
+          // decodeURIComponent(req.stateDocument.state)
+          req.stateDocument.state
         );
       }
       const authorizationCodeDocument =
@@ -74,11 +82,12 @@ const login = async (req: Request, resp: Response) => {
           clientId,
           codeChallenge,
           codeChallengeMethod,
-          callbackURL
+          callbackURL,
+          scope
         });
       formattedCallbackURL.searchParams.set(
         "code",
-        authorizationCodeDocument.id
+        authorizationCodeDocument.code || ""
       );
       formattedCallbackURL.searchParams.set("state", decryptedState);
       log.info(
@@ -96,9 +105,12 @@ const login = async (req: Request, resp: Response) => {
         };
         // save the session before redirection to ensure page
         // load does not happen before session is saved
-        req.session.save(err => {
-          if (err) {
-            throw new Error(`While generating session error: ${err}`);
+        req.session.save(error => {
+          if (error) {
+            throw new Error(`While generating session error: ${error}`);
+          }
+          if (stateDocument && stateDocument._id) {
+            stateService.deleteStateDocumentById(stateDocument._id);
           }
           return resp.status(200).json({
             redirect_uri: formattedCallbackURL.href
