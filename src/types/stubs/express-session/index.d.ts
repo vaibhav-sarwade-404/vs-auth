@@ -5,6 +5,7 @@ type User = {
   clientIp?: string | string[] = "";
   userId?: string;
   isAuthenticated?: boolean = false;
+  scope?: string = "openid profile email";
 };
 
 //Declaration merging

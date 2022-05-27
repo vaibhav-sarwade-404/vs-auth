@@ -5,6 +5,7 @@ import {
   createDecipheriv,
   createHmac
 } from "crypto";
+import { buffer } from "stream/consumers";
 import log from "./logger";
 const algorithm = "aes-192-cbc";
 
@@ -23,7 +24,7 @@ type BufferEncoding =
 
 export const createSHA256 = (text: string = "") => {
   return toStringUrlSafeBase64(
-    createHash("sha265").update(text, "ascii").digest("base64")
+    createHash("sha256").update(Buffer.from(text)).digest("base64")
   );
 };
 

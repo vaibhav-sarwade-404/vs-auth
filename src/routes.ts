@@ -3,12 +3,15 @@ import { Express, Request, Response } from "express";
 import validateAuthorizeRequest from "./middleware/validateAuthorizeRequest.middleware";
 import { handleAuthorizeRequest } from "./controller/authorizeRedirect.controller";
 import validateLoginResourceHandlerRequest from "./middleware/validateLoginResourceHandlerRequest.middleware";
-import { loginPageLoadController } from "./controller/login.controller";
+import { loginPageLoadController } from "./controller/loginPageLoad.controller";
 import { errorPageLoadController } from "./controller/error.controller";
 import constants from "./utils/constants";
 import validateSignupRequest from "./middleware/validateSignupRequest.middleware";
 import usersController from "./controller/users.controller";
 import sessionMiddleware from "./middleware/session.middleware";
+import tokenMiddleware from "./middleware/token.middleware";
+import csurf from "csurf";
+import oauthController from "./controller/oauth.controller";
 
 const routes = (app: Express) => {
   //Test health check
@@ -16,9 +19,12 @@ const routes = (app: Express) => {
   //   return res.sendStatus(200);
   // });
 
+  const csrfMiddleware = csurf({ cookie: true });
+
   //authorize redirect
   app.get(
     "/authorize",
+    csrfMiddleware,
     validateAuthorizeRequest,
     sessionMiddleware,
     handleAuthorizeRequest
@@ -27,22 +33,35 @@ const routes = (app: Express) => {
   //login-page-load
   app.get(
     "/login",
+    csrfMiddleware,
     validateLoginResourceHandlerRequest,
     sessionMiddleware,
     loginPageLoadController
   );
 
   //error
-  app.get("/error", errorPageLoadController);
+  app.get("/error", csrfMiddleware, errorPageLoadController);
 
   //error
   app.get("/cleanup", errorPageLoadController);
 
   //users/signup
-  app.post("/users/signup", validateSignupRequest, usersController.signup);
+  app.post(
+    "/users/signup",
+    csrfMiddleware,
+    validateSignupRequest,
+    usersController.signup
+  );
 
   //users/login
-  app.post("/users/login", validateSignupRequest, usersController.login);
+  app.post(
+    "/users/login",
+    csrfMiddleware,
+    validateSignupRequest,
+    usersController.login
+  );
+
+  app.post("/oauth/token", tokenMiddleware, oauthController.token);
 
   //all other routes return 404 not found
   app.get("/*", (req: Request, res: Response) =>

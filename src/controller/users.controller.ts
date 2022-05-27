@@ -4,7 +4,6 @@ import passwordService from "../service/password.service";
 import stateService from "../service/state.service";
 
 import usersService from "../service/users.service";
-import { QueryParams } from "../types/AuthorizeRedirectModel";
 import { LoginRequest, SignupRequest } from "../types/Request";
 import log from "../utils/logger";
 
@@ -46,8 +45,9 @@ const login = async (req: Request, resp: Response) => {
     state
   }: LoginRequest = req.body || {};
   const referrerSearchParams = new URL(req.headers.referer || "").searchParams;
-  const codeChallenge = referrerSearchParams.get("code_challenge");
-  const codeChallengeMethod = referrerSearchParams.get("code_challenge_method");
+  const codeChallenge = referrerSearchParams.get("code_challenge") || "";
+  const codeChallengeMethod =
+    referrerSearchParams.get("code_challenge_method") || "";
   try {
     const user = await usersService.findUserByEmail(email);
     const isValidPassword = await passwordService.comparePassword(
@@ -69,14 +69,13 @@ const login = async (req: Request, resp: Response) => {
         );
       }
       const authorizationCodeDocument =
-        await authorizationcodeService.createAuthourizationCodeDocument(
-          JSON.stringify({
-            userId: user._id?.toString() || "",
-            clientId,
-            codeChallenge,
-            codeChallengeMethod
-          })
-        );
+        await authorizationcodeService.createAuthourizationCodeDocument({
+          userId: user._id?.toString() || "",
+          clientId,
+          codeChallenge,
+          codeChallengeMethod,
+          callbackURL
+        });
       formattedCallbackURL.searchParams.set(
         "code",
         authorizationCodeDocument.id
@@ -101,7 +100,9 @@ const login = async (req: Request, resp: Response) => {
           if (err) {
             throw new Error(`While generating session error: ${err}`);
           }
-          return resp.redirect(formattedCallbackURL.href);
+          return resp.status(200).json({
+            redirect_uri: formattedCallbackURL.href
+          });
         });
       });
     } else {

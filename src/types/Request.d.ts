@@ -18,3 +18,12 @@ export interface LoginRequest {
   email: string;
   password: string;
 }
+
+export interface TokenRequest {
+  grant_type: string;
+  client_id: string;
+  code_verifier: string;
+  code: string;
+  redirect_uri: string;
+  scope: string;
+}

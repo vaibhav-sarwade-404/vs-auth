@@ -1,26 +1,13 @@
 import mongoose, { Schema } from "mongoose";
 import uid from "uid-safe";
 
-import { AuthorizationCodeDocument } from "../types/AuthorizationCodeModel";
+import {
+  AuthorizationCodeDocument,
+  ParsedAuthorizationCodeDocument
+} from "../types/AuthorizationCodeModel";
 import constants from "../utils/constants";
 import { decrypt, encrypt } from "../utils/crypto";
 import log from "../utils/logger";
-
-const getDecryptedPayload = (payload: string) => {
-  const funcName = getDecryptedPayload.name;
-  try {
-    return decrypt(
-      payload,
-      process.env.AUTHORIZATION_CODE_ENCRYPTION_KEY || "",
-      "base64"
-    );
-  } catch (error) {
-    log.error(
-      `${funcName}: something went wrong while decrypting payload with error ${error}`
-    );
-    return payload;
-  }
-};
 
 const AuthorizationCodeSchema = new Schema(
   {
@@ -28,14 +15,18 @@ const AuthorizationCodeSchema = new Schema(
     payload: { type: String, required: true },
     createdAt: {
       type: Date,
-      expires: `${process.env.AUTHORIZATION_CODE_EXPIRTY || 120}s`,
+      // expires: `${
+      //   process.env.AUTHORIZATION_CODE_EXPIRTY_IN_SECS || 12000000000
+      // }s`,
       default: Date.now
     }
   },
   {
     timestamps: true,
-    autoCreate: true,
-    expireAfterSeconds: Number(process.env.AUTHORIZATION_CODE_EXPIRTY || 2)
+    autoCreate: true
+    // expireAfterSeconds: Number(
+    //   process.env.AUTHORIZATION_CODE_EXPIRTY_IN_SECS || 12000000000
+    // )
   }
 );
 
@@ -49,22 +40,30 @@ AuthorizationCodeSchema.pre("save", async function (next) {
   next();
 });
 
-AuthorizationCodeSchema.post("findOne", function (doc, next) {
-  const funcName = "AuthorizationCodeSchema.post.findOne";
+AuthorizationCodeSchema.statics.parseAuthorizationCodeDocument = (
+  authorizationCodeDocument: AuthorizationCodeDocument
+) => {
+  const funcName = `AuthorizationCodeSchema.statics.parseAuthorizationCodeDocument`;
   try {
-    doc.payload = decrypt(
-      doc.payload,
-      process.env.AUTHORIZATION_CODE_ENCRYPTION_KEY || "",
-      "base64"
-    );
-    next();
+    if (authorizationCodeDocument) {
+      const decryptedPayload = decrypt(
+        authorizationCodeDocument.payload,
+        process.env.AUTHORIZATION_CODE_ENCRYPTION_KEY || "",
+        "base64"
+      );
+      return {
+        ...authorizationCodeDocument,
+        payload: JSON.parse(decryptedPayload)
+      };
+    }
   } catch (error) {
     log.error(
-      `${funcName}: something went wrong while decrypting payload with error ${error}`
+      `${funcName}: something went wrong while decrypting and parsing payload with error ${error}`
     );
-    next();
   }
-});
+
+  return authorizationCodeDocument;
+};
 
 const AuthorizationCodeModel = mongoose.model(
   "AuthorizationCode",
@@ -74,13 +73,19 @@ const AuthorizationCodeModel = mongoose.model(
 
 const findAuthorizationCodeDocumentById = (
   id: string
-): Promise<AuthorizationCodeDocument> => {
+): Promise<ParsedAuthorizationCodeDocument> => {
   const funcName = findAuthorizationCodeDocumentById.name;
-  return AuthorizationCodeModel.findOne({ id }).catch(err => {
-    log.error(
-      `${funcName}: Something went wrong while getting authorization code document by id (${id}) with error: ${err}`
-    );
-  });
+  return AuthorizationCodeModel.findOne({ id })
+    .then(authorizationCodeDocument =>
+      AuthorizationCodeModel.parseAuthorizationCodeDocument(
+        authorizationCodeDocument
+      )
+    )
+    .catch(err => {
+      log.error(
+        `${funcName}: Something went wrong while getting authorization code document by id (${id}) with error: ${err}`
+      );
+    });
 };
 
 const createAuthorizationCodeDocumentBy = (
@@ -96,7 +101,17 @@ const createAuthorizationCodeDocumentBy = (
   });
 };
 
+const deleteAuthorizationCodeDocumentById = (id: string): Promise<any> => {
+  const funcName = deleteAuthorizationCodeDocumentById.name;
+  return AuthorizationCodeModel.deleteOne({ id }).catch(err => {
+    log.error(
+      `${funcName}: Something went wrong while deleting authorization code document by id (${id}) with error: ${err}`
+    );
+  });
+};
+
 export default {
   findAuthorizationCodeDocumentById,
-  createAuthorizationCodeDocumentBy
+  createAuthorizationCodeDocumentBy,
+  deleteAuthorizationCodeDocumentById
 };

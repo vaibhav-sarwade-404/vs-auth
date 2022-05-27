@@ -6,18 +6,24 @@ import {
   UpdateStateDocument
 } from "../types/StateModel";
 import constants from "../utils/constants";
+import { encrypt } from "../utils/crypto";
 import log from "../utils/logger";
 
-const stateExpirtyInSeconds = Number(
-  process.env.STATE_EXPIRTY_IN_SECONDS || 3600
-);
 const StateSchema = new Schema(
   {
     clientId: { type: String, required: true },
     state: { type: String, required: true },
-    isValid: { type: Boolean, required: true }
+    isValid: { type: Boolean, required: true },
+    createdAt: {
+      type: Date,
+      expires: `${process.env.STATE_EXPIRTY_IN_SECONDS || 3600}s`,
+      default: Date.now
+    }
   },
-  { timestamps: true, expireAfterSeconds: stateExpirtyInSeconds }
+  {
+    timestamps: true,
+    expireAfterSeconds: Number(process.env.STATE_EXPIRTY_IN_SECONDS || 3600)
+  }
 );
 const StateModel = mongoose.model(
   "State",
@@ -29,11 +35,23 @@ const createStateDocument = async (
   _state: StateDocument
 ): Promise<StateDocument> => {
   const funcName = createStateDocument.name;
-  return StateModel.create(_state).catch(err => {
-    log.error(
-      `${funcName}: Something went wrong while creating state document with error: ${err}`
-    );
-  });
+  return StateModel.create(_state)
+    .then(stateDocument => {
+      const encryptedId = encrypt(
+        stateDocument.id?.toString(),
+        process.env.STATE_ENCRYPTION_KEY || "",
+        "base64"
+      );
+      return {
+        ...stateDocument,
+        _id: encodeURIComponent(encryptedId)
+      };
+    })
+    .catch(err => {
+      log.error(
+        `${funcName}: Something went wrong while creating state document with error: ${err}`
+      );
+    });
 };
 
 const updateStateDocument = async (

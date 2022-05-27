@@ -18,14 +18,13 @@ const validateLoginResourceHandlerRequest = async (
       req.query
     )}`
   );
+  const {
+    client_id = "",
+    redirect_uri = "",
+    response_type = "code",
+    state = ""
+  }: QueryParams = req.query || {};
   try {
-    const {
-      client_id = "",
-      redirect_uri = "",
-      response_type = "code",
-      state = ""
-    }: QueryParams = req.query || {};
-
     const validationError = new AuthorizationError();
 
     if (!client_id) {
@@ -81,7 +80,11 @@ const validateLoginResourceHandlerRequest = async (
     log.error(
       `${funcName}: Failed to validated /login request with error ${error}`
     );
-    return res.status(500).send({ error: `something went wrong` });
+    return res
+      .status(302)
+      .redirect(
+        `/error/?client_id=${client_id}&state=${state}&error=anomaly_detected&error_description=unauthorized`
+      );
   }
 };
 

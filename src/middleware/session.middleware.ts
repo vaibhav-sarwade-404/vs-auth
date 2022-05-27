@@ -11,6 +11,7 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
     redirect_uri: callbackURL,
     code_challenge: codeChallenge = "",
     code_challenge_method: codeChallengeMethod = "",
+    response_type = "code",
     state = ""
   }: QueryParams = req.query;
   try {
@@ -24,23 +25,24 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
     } = req.session.user || {};
     if (sessionClientId && clientIp && isAuthenticated) {
       if (clientId === sessionClientId && clientIp === sessionClientIp) {
-        let formattedCallbackURL = new URL(callbackURL || "");
-        const authorizationCodeDocument =
-          await authorizationcodeService.createAuthourizationCodeDocument(
-            JSON.stringify({
+        if (response_type === "code") {
+          let formattedCallbackURL = new URL(callbackURL || "");
+          const authorizationCodeDocument =
+            await authorizationcodeService.createAuthourizationCodeDocument({
               userId,
               clientId,
               codeChallenge,
               codeChallengeMethod
-            })
+            });
+          formattedCallbackURL.searchParams.set(
+            "code",
+            authorizationCodeDocument.id
           );
-        formattedCallbackURL.searchParams.set(
-          "code",
-          authorizationCodeDocument.id
-        );
-        formattedCallbackURL.searchParams.set("state", state);
-        log.info(`session is valid for user, redirecting to callback`);
-        return resp.redirect(formattedCallbackURL.href);
+          formattedCallbackURL.searchParams.set("state", state);
+          log.info(`session is valid for user, redirecting to callback`);
+          return resp.redirect(formattedCallbackURL.href);
+        }
+        //TO-DO: Other reponse types
       }
     }
     next();

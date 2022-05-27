@@ -18,9 +18,9 @@ export const handleAuthorizeRequest = async (req: Request, resp: Response) => {
       state: encryptedState,
       isValid: true
     });
-    returnState = stateService.encryptState(
-      stateDocument._id?.toString() || ""
-    );
+    if (stateDocument && stateDocument._id) {
+      returnState = stateDocument._id;
+    }
   }
   log.info(
     `handleAuthorize: /authorize request is valid, redirecting to /login endpoint`
