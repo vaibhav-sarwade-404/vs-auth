@@ -63,10 +63,50 @@ const routes = (app: Express) => {
     usersController.login
   );
 
-  app.post("/oauth/token", tokenMiddleware, oauthController.token);
+  app.options("/oauth/token", (_req, resp, next) => {
+    resp.setHeader("Access-Control-Allow-Origin", "*");
+    resp.setHeader("Access-Control-Allow-Methods", "POST");
+    resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    resp.setHeader("Access-Control-Allow-Credentials", "true");
+    return resp.status(200).send();
+  });
+
+  app.options("/userinfo", (_req, resp, next) => {
+    resp.setHeader("Access-Control-Allow-Origin", "*");
+    resp.setHeader("Access-Control-Allow-Methods", "POST");
+    resp.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type,Authorization"
+    );
+    resp.setHeader("Access-Control-Allow-Credentials", "true");
+    return resp.status(200).send();
+  });
+
+  app.post(
+    "/oauth/token",
+    (_req, resp, next) => {
+      resp.setHeader("Access-Control-Allow-Origin", "*");
+      resp.setHeader("Access-Control-Allow-Methods", "POST");
+      resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      resp.setHeader("Access-Control-Allow-Credentials", "true");
+      next();
+    },
+    tokenMiddleware,
+    oauthController.token
+  );
 
   app.get(
     "/userinfo",
+    (_req, resp, next) => {
+      resp.setHeader("Access-Control-Allow-Origin", "*");
+      resp.setHeader("Access-Control-Allow-Methods", "POST");
+      resp.setHeader(
+        "Access-Control-Allow-Headers",
+        "Content-Type,Authorization"
+      );
+      resp.setHeader("Access-Control-Allow-Credentials", "true");
+      next();
+    },
     requestValidatorMiddleware.validateUserInfoRequest,
     oauthController.userinfo
   );

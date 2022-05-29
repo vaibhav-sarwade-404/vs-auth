@@ -3,14 +3,11 @@ import {
   ParsedRefreshTokenDocument,
   RefreshTokenDocument
 } from "../types/RefreshTokenModel";
-import { decrypt } from "../utils/crypto";
-import log from "../utils/logger";
 
 const getRefreshTokenDocument = async (
   encryptedId: string
 ): Promise<ParsedRefreshTokenDocument> => {
-  const decryptedId = decryptRefreshToken(encryptedId);
-  return refreshTokenModel.findRefreshTokenById(decryptedId);
+  return refreshTokenModel.findRefreshTokenById(encryptedId);
 };
 
 const createRefreshTokenDocument = (
@@ -19,29 +16,19 @@ const createRefreshTokenDocument = (
   return refreshTokenModel.createRefreshToken(refreshTokenDocument);
 };
 
-const decryptRefreshToken = (encryptedStr: string) => {
-  const funcName = decryptRefreshToken.name;
-  try {
-    return decrypt(
-      encryptedStr,
-      process.env.REFRESH_TOKEN_ENCRYPTION_KEY || "",
-      "base64"
-    );
-  } catch (error) {
-    log.error(
-      `${funcName}: something went wrong while decrypted refresh token string, returning original string with error: ${error}`
-    );
-    return encryptedStr;
-  }
+const deleteRefreshTokenDocument = (refreshToken: string) => {
+  return refreshTokenModel.deleteRefreshTokenDocumentById(refreshToken);
 };
 
-const deleteRefreshTokenDocument = (refreshToken: string) => {
-  const decryptedId = decryptRefreshToken(refreshToken);
-  return refreshTokenModel.deleteRefreshTokenDocumentById(decryptedId);
+const getRefreshTokenDocumentAndLock = async (
+  encryptedId: string
+): Promise<ParsedRefreshTokenDocument> => {
+  return refreshTokenModel.findRefreshTokenByIdAndLock(encryptedId);
 };
 
 export default {
   getRefreshTokenDocument,
   createRefreshTokenDocument,
-  deleteRefreshTokenDocument
+  deleteRefreshTokenDocument,
+  getRefreshTokenDocumentAndLock
 };

@@ -1,16 +1,17 @@
+import dotenv from "dotenv";
 import express from "express";
 import path from "path";
 import cookieParser from "cookie-parser";
 import session from "express-session";
 import ConnectMongoDBSession from "connect-mongodb-session";
 
-import log from "./utils/logger";
+dotenv.config({ path: path.join(__dirname, `../.env.common`) });
+
 import connect from "./utils/connect";
 import routes from "./routes";
-import dotenv from "dotenv";
 import logMiddleware from "./middleware/log.middleware";
+import log from "./utils/logger";
 
-dotenv.config({ path: path.join(__dirname, `../.env.common`) });
 const port = process.env.PORT || 3001;
 const connectionString: string = process.env.DB_URL || "";
 

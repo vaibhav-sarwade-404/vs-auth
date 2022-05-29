@@ -6,6 +6,7 @@ type User = {
   userId?: string;
   isAuthenticated?: boolean = false;
   scope?: string = "openid profile email";
+  authorizationCode?: string = "";
 };
 
 //Declaration merging

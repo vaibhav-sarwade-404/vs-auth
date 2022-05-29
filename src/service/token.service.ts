@@ -1,5 +1,5 @@
 import fs from "fs";
-import jwt, { Jwt, JwtPayload } from "jsonwebtoken";
+import jwt, {  JwtPayload } from "jsonwebtoken";
 import path from "path";
 
 import { CreateJWTPayload, TokenResponse } from "../types/TokenModel";
@@ -34,7 +34,8 @@ const prepareTokenResponse = async ({
     const refreshTokenDocument =
       await refreshTokenService.createRefreshTokenDocument({
         clientId,
-        payload: JSON.stringify({ callbackURL, userId: user._id || "" })
+        payload: JSON.stringify({ callbackURL, userId: user._id || "" }),
+        lock: false
       });
     if (refreshTokenDocument) refresh_token = refreshTokenDocument.refreshToken;
   }

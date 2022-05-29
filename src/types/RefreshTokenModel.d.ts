@@ -7,6 +7,7 @@ export type RefreshTokenDocument = {
   _id?: string;
   clientId: string;
   payload: string;
+  lock: boolean = false;
   createdAt?: Date;
   updatedAt?: Date;
 };

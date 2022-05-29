@@ -1,4 +1,4 @@
-import authorizationcodeModel from "../model/authorizationcode.model";
+import authorizationcodeModel from "../model/authorizationCode.model";
 import {
   AuthorizationCodePayload,
   ParsedAuthorizationCodeDocument
@@ -23,7 +23,8 @@ const createAuthourizationCodeDocument = async (
 ): Promise<ParsedAuthorizationCodeDocument> => {
   const stringifiedPayload = JSON.stringify(payload);
   return authorizationcodeModel.createAuthorizationCodeDocument({
-    payload: stringifiedPayload
+    payload: stringifiedPayload,
+    lock: false
   });
 };
 
@@ -52,9 +53,16 @@ const isCodeVerifierValid = async (
   return false;
 };
 
+const getAuthourizationCodeDocumentByIdAndLock = async (
+  id: string
+): Promise<ParsedAuthorizationCodeDocument> => {
+  return authorizationcodeModel.findAuthorizationCodeDocumentByIdAndLock(id);
+};
+
 export default {
   getAuthourizationCodeDocumentById,
   deleteAuthourizationCodeDocumentById,
   createAuthourizationCodeDocument,
-  isCodeVerifierValid
+  isCodeVerifierValid,
+  getAuthourizationCodeDocumentByIdAndLock
 };

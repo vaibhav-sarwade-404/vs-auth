@@ -8,6 +8,8 @@ export type AuthorizationCodePayload = {
 };
 
 export type AuthorizationCodeDocument = {
+  _id?: string;
+  lock: boolean;
   payload: string;
 };
 

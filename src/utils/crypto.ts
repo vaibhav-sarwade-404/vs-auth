@@ -38,7 +38,7 @@ export const generateRandomString = async () => {
 };
 
 export const toStringUrlSafeBase64 = (str: string): string =>
-  str.replace(/\//g, "-").replace(/\+/g, "_").replace(/=/g, "");
+  str.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 
 export const toBase64 = (str: string): string =>
   Buffer.from(str).toString("base64");

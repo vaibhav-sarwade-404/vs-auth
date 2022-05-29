@@ -18,6 +18,7 @@ const validateUserInfoRequest = (
     if (!tokenPayload || typeof tokenPayload === "string") {
       throw new Error("Invalid or expired token");
     }
+    req.session.user = {};
     req.session.user.userId = tokenPayload.sub || "";
     req.session.user.isAuthenticated = true;
     return next();

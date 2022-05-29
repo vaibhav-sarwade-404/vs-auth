@@ -21,7 +21,9 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
   try {
     if (grantType === "authorization_code" && code) {
       const authorizationCodeDocument: ParsedAuthorizationCodeDocument =
-        await authorizationcodeService.getAuthourizationCodeDocumentById(code);
+        await authorizationcodeService.getAuthourizationCodeDocumentByIdAndLock(
+          code
+        );
       if (authorizationCodeDocument) {
         if (
           authorizationCodeDocument.payload.clientId === clientId &&
@@ -32,12 +34,17 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
               authorizationCodeDocument,
               codeVerifier
             );
-          if (isValidAuthorizationCode) {
+          if (
+            isValidAuthorizationCode &&
+            (req.session.user || {}).authorizationCode !==
+              authorizationCodeDocument.code
+          ) {
             req.session.user = {
               ...(req.session.user || {}),
               userId: (authorizationCodeDocument.payload || {}).userId,
               scope,
-              isAuthenticated: true
+              isAuthenticated: true,
+              authorizationCode: authorizationCodeDocument.code
             };
             return next();
           }
@@ -51,7 +58,7 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
       });
     } else if (grantType === "refresh_token" && refresh_token) {
       const refreshTokenDocument: ParsedRefreshTokenDocument =
-        await refreshTokenService.getRefreshTokenDocument(refresh_token);
+        await refreshTokenService.getRefreshTokenDocumentAndLock(refresh_token);
       if (refreshTokenDocument) {
         if (
           refreshTokenDocument.clientId === clientId &&
@@ -73,6 +80,9 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
         error: "Invalid refresh token"
       });
     }
+    return resp.status(400).json({
+      error: "Invalid request"
+    });
   } catch (error) {
     log.error(
       `${funcName}: Something went wrong while retriving session to check authentication with error: ${error}`

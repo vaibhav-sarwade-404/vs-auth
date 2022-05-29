@@ -4,7 +4,10 @@ import log from "./logger";
 
 const connect = (connectionString: string) => {
   const funcName = connect.name;
-
+  mongoose.set(
+    "debug",
+    (process.env.MONGO_DEBUG || "").toLowerCase() === "true"
+  );
   mongoose
     .connect(connectionString)
     .then(() => log.info(`${funcName}: DB connected`))

@@ -39,11 +39,15 @@ const token = async (req: Request, resp: Response) => {
         if (tokenResponse) {
           if (grant_type === "authorization_code") {
             const { code }: AuthorizationCodeRequest = req.body || {};
-            authorizationcodeService.deleteAuthourizationCodeDocumentById(code);
+            await authorizationcodeService.deleteAuthourizationCodeDocumentById(
+              code
+            );
+            req.session.user.authorizationCode = undefined;
+            req.session.user.isAuthenticated = false;
           } else if (grant_type === "refresh_token") {
             const { refresh_token: refreshToken = "" }: RefreshTokenRequest =
               req.body || {};
-            refreshTokenService.deleteRefreshTokenDocument(refreshToken);
+            await refreshTokenService.deleteRefreshTokenDocument(refreshToken);
           }
           return resp.status(200).json(tokenResponse);
         }
