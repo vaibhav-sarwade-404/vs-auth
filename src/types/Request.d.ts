@@ -1,5 +1,5 @@
 import { GrantTypes } from "./TokenModel";
-import { MetaData } from "./UsersModel";
+import { UserMetaData } from "./UsersModel";
 
 export interface SignupRequest {
   clientId: string;
@@ -8,7 +8,7 @@ export interface SignupRequest {
   _csrf: string;
   email: string;
   password: string;
-  meta_data?: MetaData;
+  user_metadata?: UserMetaData;
 }
 
 export interface LoginRequest {
@@ -28,4 +28,9 @@ export interface TokenRequest {
   code_verifier?: string;
   code?: string;
   refresh_token?: string;
+}
+
+export interface LogoutRequest {
+  client_id: string;
+  redirect_uri: string;
 }

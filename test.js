@@ -56,3 +56,17 @@ console.log(
     "@vb*EgzLwAKQr.hmf!Xfao-r"
   )
 );
+
+const toStringUrlSafeBase64 = str =>
+  str.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+
+const createSHA256 = (text = "") => {
+  return toStringUrlSafeBase64(
+    createHash("sha256").update(Buffer.from(text)).digest("base64")
+  );
+};
+
+console.log(
+  "@@@@@@ ",
+  createSHA256("P9LuBrZhXESPZGCyiTOZHmDBvgJdEIuctVDcwBF_3SR")
+);

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import authorizationcodeService from "../service/authorizationcode.service";
 import passwordService from "../service/password.service";
+import refreshTokenService from "../service/refreshToken.service";
 import stateService from "../service/state.service";
 
 import usersService from "../service/users.service";
@@ -15,7 +16,7 @@ const signup = async (req: Request, resp: Response) => {
     const {
       email = "",
       password = "",
-      meta_data = {}
+      user_metadata = {}
     }: SignupRequest = req.body || {};
     const user = await usersService.findUserByEmail(email);
     if (user) {
@@ -27,7 +28,7 @@ const signup = async (req: Request, resp: Response) => {
     const _user = await usersService.createUserDocument({
       email,
       password,
-      meta_data
+      user_metadata
     });
     return resp.status(200).json(_user);
   } catch (error) {
@@ -76,23 +77,6 @@ const login = async (req: Request, resp: Response) => {
           req.stateDocument.state
         );
       }
-      const authorizationCodeDocument =
-        await authorizationcodeService.createAuthourizationCodeDocument({
-          userId: user._id?.toString() || "",
-          clientId,
-          codeChallenge,
-          codeChallengeMethod,
-          callbackURL,
-          scope
-        });
-      formattedCallbackURL.searchParams.set(
-        "code",
-        authorizationCodeDocument.code || ""
-      );
-      formattedCallbackURL.searchParams.set("state", decryptedState);
-      log.info(
-        `${funcName}: login for user with email( ${email} ) was successful, returning user to callback`
-      );
       const { user: sessionUser } = req.session;
       req.session.regenerate(err => {
         if (err) {
@@ -105,10 +89,28 @@ const login = async (req: Request, resp: Response) => {
         };
         // save the session before redirection to ensure page
         // load does not happen before session is saved
-        req.session.save(error => {
+        req.session.save(async error => {
           if (error) {
             throw new Error(`While generating session error: ${error}`);
           }
+          const authorizationCodeDocument =
+            await authorizationcodeService.createAuthourizationCodeDocument({
+              userId: user._id?.toString() || "",
+              clientId,
+              codeChallenge,
+              codeChallengeMethod,
+              callbackURL,
+              scope,
+              sessionId: req.session.id
+            });
+          formattedCallbackURL.searchParams.set(
+            "code",
+            authorizationCodeDocument.code || ""
+          );
+          formattedCallbackURL.searchParams.set("state", decryptedState);
+          log.info(
+            `${funcName}: login for user with email( ${email} ) was successful, returning user to callback`
+          );
           if (stateDocument && stateDocument._id) {
             stateService.deleteStateDocumentById(stateDocument._id);
           }
@@ -135,7 +137,43 @@ const login = async (req: Request, resp: Response) => {
   }
 };
 
+const logout = async (req: Request, resp: Response) => {
+  const funcName = logout.name;
+  const { client_id = "", redirect_uri = "" }: QueryParams = req.query || {};
+  try {
+    log.debug(
+      `${funcName}: request is valid, proceeding with destroying session and deleting any refresh token registered for client `
+    );
+    const sessionId = req.session.id;
+    req.session.destroy(err => {
+      if (err) {
+        return resp
+          .status(302)
+          .redirect(
+            `/error/?client_id=${client_id}&error=request_error&error_description=${encodeURIComponent(
+              "couldn't logout due to technical issue"
+            )}`
+          );
+      }
+      log.debug(
+        `${funcName}: session is destroyed, deleting all refresh tokens associated with session`
+      );
+      sessionId &&
+        refreshTokenService.deleteRefreshTokensDocumentBySessionId(sessionId);
+      return resp.status(302).redirect(redirect_uri);
+    });
+  } catch (error) {
+    log.error(
+      `${funcName}: Logout failed for client id(${client_id}) with error ${error}`
+    );
+    return resp.status(400).json({
+      error: "something went wrong"
+    });
+  }
+};
+
 export default {
   signup,
-  login
+  login,
+  logout
 };

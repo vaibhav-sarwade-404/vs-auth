@@ -1,6 +1,9 @@
 import mongoose, { Schema } from "mongoose";
 
-import { FindByClientIdOptions } from "../types/AuthorizeRedirectModel";
+import {
+  ClientDocument,
+  FindByClientIdOptions
+} from "../types/AuthorizeRedirectModel";
 import constants from "../utils/constants";
 import log from "../utils/logger";
 
@@ -28,22 +31,20 @@ const ClientModel = mongoose.model(
 const findByClientId = async (
   clientId: string,
   options?: FindByClientIdOptions
-) => {
+): Promise<ClientDocument> => {
   const funcName = findByClientId.name;
-  try {
-    let computedOptions: { exclude: Object } = { exclude: {} };
-    if (options && options.exclude) {
-      computedOptions.exclude = options.exclude.reduce(
-        (prevOption, currentOption) => ({ ...prevOption, [currentOption]: 0 }),
-        {}
-      );
-    }
-    return ClientModel.findOne({ clientId }, computedOptions);
-  } catch (error) {
-    log.error(
-      `${funcName}: client not found or something went wrong while finding client for client id : ${clientId} with error: ${error}`
+  let computedOptions: { exclude: Object } = { exclude: {} };
+  if (options && options.exclude) {
+    computedOptions.exclude = options.exclude.reduce(
+      (prevOption, currentOption) => ({ ...prevOption, [currentOption]: 0 }),
+      {}
     );
   }
+  return ClientModel.findOne({ clientId }, computedOptions).catch(error =>
+    log.error(
+      `${funcName}: something went wrong while fetching client document with client id (${clientId}) with error: ${error}`
+    )
+  );
 };
 
 export default {

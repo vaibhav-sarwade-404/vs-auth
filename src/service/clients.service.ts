@@ -1,10 +1,13 @@
 import clientModel from "../model/client.model";
-import { FindByClientIdOptions } from "../types/AuthorizeRedirectModel";
+import {
+  ClientDocument,
+  FindByClientIdOptions
+} from "../types/AuthorizeRedirectModel";
 
 const getClientByClientId = (
   clientId: string,
   options?: FindByClientIdOptions
-) => {
+): Promise<ClientDocument> => {
   return clientModel.findByClientId(clientId, options);
 };
 

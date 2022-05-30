@@ -14,3 +14,17 @@ export interface QueryParams {
   scope?: string = "openid profile email";
   state?: string;
 }
+
+export type ClientDocument = {
+  clientId: string;
+  clientSecret: string;
+  applicationType: string;
+  allowedCallbackUrls: string[];
+  allowedLogoutUrls: string[];
+  idTokenExpiry: number;
+  refreshTokenRotation: true;
+  refreshTokenExpiry: number;
+  grantTypes: string[];
+  scopes: string[];
+  clientName: string;
+};

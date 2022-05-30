@@ -23,7 +23,8 @@ const token = async (req: Request, resp: Response) => {
     const {
       userId = "",
       isAuthenticated = false,
-      scope = ""
+      scope = "",
+      _sessionId
     } = req.session.user;
     if (isAuthenticated) {
       const userDocument = await usersService.findUserById(userId);
@@ -33,7 +34,8 @@ const token = async (req: Request, resp: Response) => {
           clientId,
           scope,
           grant_type,
-          callbackURL
+          callbackURL,
+          sessionId: _sessionId
         });
 
         if (tokenResponse) {
@@ -92,7 +94,12 @@ const userinfo = async (req: Request, resp: Response) => {
       const userDocument = await usersService.findUserById(userId);
       return resp.status(200).json({
         email: userDocument.email,
-        meta_data: userDocument.meta_data
+        ...(userDocument.user_metadata?.firstName
+          ? { firstName: userDocument.user_metadata?.firstName }
+          : {}),
+        ...(userDocument.user_metadata?.lastName
+          ? { lastName: userDocument.user_metadata?.lastName }
+          : {})
       });
     }
   } catch (error) {

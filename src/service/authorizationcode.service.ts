@@ -24,7 +24,8 @@ const createAuthourizationCodeDocument = async (
   const stringifiedPayload = JSON.stringify(payload);
   return authorizationcodeModel.createAuthorizationCodeDocument({
     payload: stringifiedPayload,
-    lock: false
+    lock: false,
+    sessionId: payload.sessionId
   });
 };
 

@@ -1,18 +1,14 @@
 import { Express, Request, Response } from "express";
 
-import validateAuthorizeRequest from "./middleware/validateAuthorizeRequest.middleware";
 import { handleAuthorizeRequest } from "./controller/authorizeRedirect.controller";
-import validateLoginResourceHandlerRequest from "./middleware/validateLoginResourceHandlerRequest.middleware";
 import { loginPageLoadController } from "./controller/loginPageLoad.controller";
 import { errorPageLoadController } from "./controller/error.controller";
 import constants from "./utils/constants";
-import validateSignupRequest from "./middleware/validateSignupRequest.middleware";
 import usersController from "./controller/users.controller";
 import sessionMiddleware from "./middleware/session.middleware";
 import tokenMiddleware from "./middleware/token.middleware";
 import csurf from "csurf";
 import oauthController from "./controller/oauth.controller";
-import validateLoginRequest from "./middleware/validateLoginRequest.middleware";
 import requestValidatorMiddleware from "./middleware/requestValidator.middleware";
 
 const routes = (app: Express) => {
@@ -27,7 +23,7 @@ const routes = (app: Express) => {
   app.get(
     "/authorize",
     csrfMiddleware,
-    validateAuthorizeRequest,
+    requestValidatorMiddleware.authorizeRedirectRequest,
     sessionMiddleware,
     handleAuthorizeRequest
   );
@@ -36,7 +32,7 @@ const routes = (app: Express) => {
   app.get(
     "/login",
     csrfMiddleware,
-    validateLoginResourceHandlerRequest,
+    requestValidatorMiddleware.loginRedirectRequest,
     sessionMiddleware,
     loginPageLoadController
   );
@@ -51,7 +47,7 @@ const routes = (app: Express) => {
   app.post(
     "/users/signup",
     csrfMiddleware,
-    validateSignupRequest,
+    requestValidatorMiddleware.signupRequest,
     usersController.signup
   );
 
@@ -59,8 +55,15 @@ const routes = (app: Express) => {
   app.post(
     "/users/login",
     csrfMiddleware,
-    validateLoginRequest,
+    requestValidatorMiddleware.loginRequest,
     usersController.login
+  );
+
+  //users/logout
+  app.get(
+    "/users/logout",
+    requestValidatorMiddleware.validateLogoutRequest,
+    usersController.logout
   );
 
   app.options("/oauth/token", (_req, resp, next) => {

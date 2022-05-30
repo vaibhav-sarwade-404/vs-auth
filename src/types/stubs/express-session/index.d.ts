@@ -7,6 +7,7 @@ type User = {
   isAuthenticated?: boolean = false;
   scope?: string = "openid profile email";
   authorizationCode?: string = "";
+  _sessionId: string;
 };
 
 //Declaration merging

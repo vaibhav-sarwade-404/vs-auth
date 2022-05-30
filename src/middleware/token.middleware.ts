@@ -44,7 +44,8 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
               userId: (authorizationCodeDocument.payload || {}).userId,
               scope,
               isAuthenticated: true,
-              authorizationCode: authorizationCodeDocument.code
+              authorizationCode: authorizationCodeDocument.code,
+              _sessionId: authorizationCodeDocument.sessionId
             };
             return next();
           }

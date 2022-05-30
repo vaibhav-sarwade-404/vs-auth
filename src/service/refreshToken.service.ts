@@ -26,9 +26,14 @@ const getRefreshTokenDocumentAndLock = async (
   return refreshTokenModel.findRefreshTokenByIdAndLock(encryptedId);
 };
 
+const deleteRefreshTokensDocumentBySessionId = async (sessionId: string) => {
+  return refreshTokenModel.deleteRefreshTokensDocumentBySessionId(sessionId);
+};
+
 export default {
   getRefreshTokenDocument,
   createRefreshTokenDocument,
   deleteRefreshTokenDocument,
-  getRefreshTokenDocumentAndLock
+  getRefreshTokenDocumentAndLock,
+  deleteRefreshTokensDocumentBySessionId
 };

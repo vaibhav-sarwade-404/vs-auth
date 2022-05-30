@@ -1,5 +1,5 @@
 import fs from "fs";
-import jwt, {  JwtPayload } from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import path from "path";
 
 import { CreateJWTPayload, TokenResponse } from "../types/TokenModel";
@@ -10,7 +10,8 @@ const prepareTokenResponse = async ({
   user,
   clientId = "",
   scope,
-  callbackURL
+  callbackURL,
+  sessionId
 }: CreateJWTPayload): Promise<TokenResponse> => {
   const jwtSecret = fs.readFileSync(path.join("./privateKey.pem"));
   let refresh_token = "";
@@ -35,7 +36,8 @@ const prepareTokenResponse = async ({
       await refreshTokenService.createRefreshTokenDocument({
         clientId,
         payload: JSON.stringify({ callbackURL, userId: user._id || "" }),
-        lock: false
+        lock: false,
+        sessionId
       });
     if (refreshTokenDocument) refresh_token = refreshTokenDocument.refreshToken;
   }

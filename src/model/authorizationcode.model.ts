@@ -12,6 +12,7 @@ const AuthorizationCodeSchema = new Schema(
   {
     payload: { type: String, required: true },
     lock: { type: Boolean },
+    sessionId: { type: String, required: true },
     createdAt: {
       type: Date,
       expires: `${process.env.AUTHORIZATION_CODE_EXPIRTY_IN_SECS || 120}s`,
@@ -81,7 +82,8 @@ AuthorizationCodeSchema.statics.parseAuthorizationCodeDocument = (
     );
     return {
       code: encryptedCode,
-      payload: JSON.parse(decryptedPayload)
+      payload: JSON.parse(decryptedPayload),
+      sessionId: authorizationCodeDocument.sessionId
     };
   } catch (error) {
     log.error(

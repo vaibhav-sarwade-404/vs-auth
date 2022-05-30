@@ -22,7 +22,7 @@ const UsersSchema = new Schema(
 UsersSchema.statics.santitizeUserForResponse = (user: UsersDocument) => {
   return {
     email: user.email,
-    meta_data: user.meta_data,
+    user_metadata: user.user_metadata,
     id: (user._id || "").toString()
   };
 };

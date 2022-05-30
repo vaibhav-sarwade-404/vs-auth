@@ -60,8 +60,9 @@ RefreshTokenSchema.statics.parseRefreshTokenDocument = (
   let parsedRefreshTokenDocument: ParsedRefreshTokenDocument = {
     clientId: refreshTokenDocument.clientId,
     _id: refreshTokenDocument._id?.toString(),
-    payload: { callbackURL: "", userId: "" },
-    refreshToken: ""
+    payload: { callbackURL: "", userId: "", sessionId: "" },
+    refreshToken: "",
+    sessionId: ""
   };
   try {
     if (refreshTokenDocument) {
@@ -70,10 +71,11 @@ RefreshTokenSchema.statics.parseRefreshTokenDocument = (
         refreshTokenDocument.payload || ""
       );
       const refreshToken = encryptRefreshTokenDocumentParams(
-        refreshTokenDocument._id || ""
+        (refreshTokenDocument._id || "").toString()
       );
       parsedRefreshTokenDocument.refreshToken = refreshToken;
       parsedRefreshTokenDocument.payload = JSON.parse(decryptedPayload);
+      parsedRefreshTokenDocument.sessionId = refreshTokenDocument.sessionId;
       log.debug(`${funcName}: refresh token document successfully parsed`);
     }
   } catch (error) {
@@ -186,9 +188,24 @@ const findRefreshTokenByIdAndLock = async (
     });
 };
 
+const deleteRefreshTokensDocumentBySessionId = async (
+  sessionId: string
+): Promise<any> => {
+  const funcName = deleteRefreshTokensDocumentBySessionId.name;
+  log.debug(
+    `${funcName}: deleting refresh token documents for session id (${sessionId}) `
+  );
+  return RefreshTokenModel.deleteMany({ sessionId }).catch(error => {
+    log.error(
+      `${funcName}: Something went wrong while deleting refresh token documents by id (${sessionId}) with error :${error}`
+    );
+  });
+};
+
 export default {
   findRefreshTokenById,
   createRefreshToken,
   deleteRefreshTokenDocumentById,
-  findRefreshTokenByIdAndLock
+  findRefreshTokenByIdAndLock,
+  deleteRefreshTokensDocumentBySessionId
 };
