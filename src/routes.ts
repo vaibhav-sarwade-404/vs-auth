@@ -1,4 +1,5 @@
-import { Express, Request, Response } from "express";
+import { Express, NextFunction, Request, Response } from "express";
+import { RateLimiterMongo } from "rate-limiter-flexible";
 
 import { handleAuthorizeRequest } from "./controller/authorizeRedirect.controller";
 import { loginPageLoadController } from "./controller/loginPageLoad.controller";
@@ -10,6 +11,8 @@ import tokenMiddleware from "./middleware/token.middleware";
 import csurf from "csurf";
 import oauthController from "./controller/oauth.controller";
 import requestValidatorMiddleware from "./middleware/requestValidator.middleware";
+import loginRateLimitService from "./service/loginRateLimit.service";
+import rateLimitMiddleware from "./middleware/rateLimit.middleware";
 
 const routes = (app: Express) => {
   //Test health check
@@ -51,11 +54,32 @@ const routes = (app: Express) => {
     usersController.signup
   );
 
+  // async (req: Request, resp: Response, next: NextFunction) => {
+  //   loginRateLimiter
+  //     .consume(req.ip, 1)
+  //     .then(rateLimiterResp => {
+  //       resp.setHeader("X-RateLimit-Limit", 10);
+  //       resp.setHeader(
+  //         "X-RateLimit-Remaining",
+  //         rateLimiterResp.remainingPoints
+  //       );
+  //       resp.setHeader(
+  //         "X-RateLimit-Reset",
+  //         Date.now() + rateLimiterResp.msBeforeNext
+  //       );
+  //       next();
+  //     })
+  //     .catch(_ => {
+  //       resp.status(429).send("Too Many Requests");
+  //     });
+  // },
+
   //users/login
   app.post(
     "/users/login",
     csrfMiddleware,
     requestValidatorMiddleware.loginRequest,
+    rateLimitMiddleware.login,
     usersController.login
   );
 
@@ -111,6 +135,7 @@ const routes = (app: Express) => {
       next();
     },
     requestValidatorMiddleware.validateUserInfoRequest,
+    rateLimitMiddleware.userInfo,
     oauthController.userinfo
   );
 

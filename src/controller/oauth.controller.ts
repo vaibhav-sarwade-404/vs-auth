@@ -35,7 +35,7 @@ const token = async (req: Request, resp: Response) => {
           scope,
           grant_type,
           callbackURL,
-          sessionId: _sessionId
+          sessionId: _sessionId || ""
         });
 
         if (tokenResponse) {

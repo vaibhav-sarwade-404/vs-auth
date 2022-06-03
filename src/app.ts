@@ -22,6 +22,7 @@ const mongoStore = new MongoDBStore({
 });
 
 const app = express();
+app.disable("x-powered-by");
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -36,7 +37,7 @@ app.use(
     name: "vs-auth"
   })
 );
-
+app.use(express.static("public"));
 app.use(logMiddleware);
 
 app.listen(port, () => {

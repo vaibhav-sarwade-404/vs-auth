@@ -25,6 +25,7 @@ export const handleAuthorizeRequest = async (req: Request, resp: Response) => {
   );
 
   req.session.user = {
+    ...req.session.user,
     clientId,
     clientIp: req.headers["x-forwarded-for"] || req.socket.remoteAddress || ""
   };

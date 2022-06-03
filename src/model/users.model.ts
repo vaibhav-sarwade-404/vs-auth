@@ -1,7 +1,10 @@
 import mongoose, { Schema } from "mongoose";
 
-import { UpdateStateDocument } from "../types/StateModel";
-import { UpdateUserDocument, UsersDocument } from "../types/UsersModel";
+import {
+  BlockUserForIp,
+  UpdateUserDocument,
+  UsersDocument
+} from "../types/UsersModel";
 import constants from "../utils/constants";
 import log from "../utils/logger";
 
@@ -14,7 +17,9 @@ const UsersSchema = new Schema(
   {
     email: { type: String, required: true },
     password: { type: String, required: true },
-    user_metadata: { type: MetaDataSchema }
+    user_metadata: { type: MetaDataSchema },
+    login_count: { type: Number },
+    blocked_for: { type: [String] }
   },
   { timestamps: true }
 );
@@ -64,22 +69,7 @@ export const updateUsersDocument = async (
   });
 };
 
-export const updateStateDocumentById = async (
-  user: UpdateStateDocument
-): Promise<any> => {
-  const funcName = updateUsersDocument.name;
-  return UsersModel.updateOne(
-    { _id: user._id },
-    { user },
-    { upsert: true }
-  ).catch(err => {
-    log.error(
-      `${funcName}: Something went wrong while update user document by id(${user._id}) with error: ${err}`
-    );
-  });
-};
-
-export const findUserById = async (_id: string) => {
+export const findUserById = async (_id: string): Promise<UsersDocument> => {
   const funcName = findUserById.name;
   return UsersModel.findOne({ _id }).catch(err =>
     log.error(
@@ -88,11 +78,43 @@ export const findUserById = async (_id: string) => {
   );
 };
 
-export const findUserByEmail = async (email: string) => {
+export const findUserByEmail = async (
+  email: string
+): Promise<UsersDocument> => {
   const funcName = findUserById.name;
   return UsersModel.findOne({ email }).catch(err =>
     log.error(
-      `${funcName}: Something went wrong while ser with email(${email}) document with error: ${err}`
+      `${funcName}: Something went wrong while get user with email(${email}) document with error: ${err}`
+    )
+  );
+};
+
+export const incrementLoginCountByUserId = async (
+  id: string
+): Promise<UsersDocument> => {
+  const funcName = incrementLoginCountByUserId.name;
+  return UsersModel.findOneAndUpdate(
+    { _id: id },
+    { $inc: { login_count: 1 } },
+    { upsert: false }
+  ).catch(err =>
+    log.error(
+      `${funcName}: Something went wrong while incrementing login count for user with id(${id}) with error: ${err}`
+    )
+  );
+};
+
+export const blockIpForUserById = async (
+  blockIpDocument: BlockUserForIp
+): Promise<UsersDocument> => {
+  const funcName = incrementLoginCountByUserId.name;
+  return UsersModel.findOneAndUpdate(
+    { _id: blockIpDocument._id },
+    { $addToSet: { blocked_for: blockIpDocument.ip } },
+    { upsert: false }
+  ).catch(err =>
+    log.error(
+      `${funcName}: Something went wrong while updating blocked ip for user with id(${blockIpDocument._id}) with error: ${err}`
     )
   );
 };
@@ -100,7 +122,8 @@ export const findUserByEmail = async (email: string) => {
 export default {
   createUserDocument,
   updateUsersDocument,
-  updateStateDocumentById,
   findUserById,
-  findUserByEmail
+  findUserByEmail,
+  incrementLoginCountByUserId,
+  blockIpForUserById
 };

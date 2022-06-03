@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import authorizationcodeService from "../service/authorizationcode.service";
+import loginRateLimitService from "../service/loginRateLimit.service";
 import passwordService from "../service/password.service";
 import refreshTokenService from "../service/refreshToken.service";
 import stateService from "../service/state.service";
@@ -8,6 +9,7 @@ import usersService from "../service/users.service";
 import { QueryParams } from "../types/AuthorizeRedirectModel";
 import { LoginRequest, SignupRequest } from "../types/Request";
 import { StateDocument } from "../types/StateModel";
+import constants from "../utils/constants";
 import log from "../utils/logger";
 
 const signup = async (req: Request, resp: Response) => {
@@ -53,13 +55,36 @@ const login = async (req: Request, resp: Response) => {
   const codeChallengeMethod =
     referrerSearchParams.get("code_challenge_method") || "";
   try {
+    const clientIp =
+      req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
     const user = await usersService.findUserByEmail(email);
+    if (!user) {
+      log.info(
+        `${funcName}: login for user with email( ${email} ) was not successful, user not found.`
+      );
+      return resp.status(401).json({
+        error: "Username or password is wrong"
+      });
+    }
+
+    if (user.blocked_for?.includes(clientIp.toString())) {
+      return resp.status(429).json({
+        code: "too_many_attempts",
+        description:
+          "Your account has been blocked after multiple consecutive login attempts",
+        name: "AnomalyDetected",
+        state: 429
+      });
+    }
+
     const isValidPassword = await passwordService.comparePassword(
       password,
       user.password
     );
     if (isValidPassword) {
-      let formattedCallbackURL = new URL(callbackURL);
+      let formattedCallbackURL = new URL(
+        referrerSearchParams.get("redirect_uri") || callbackURL
+      );
       let decryptedState = "",
         stateDocument: StateDocument;
 
@@ -114,17 +139,43 @@ const login = async (req: Request, resp: Response) => {
           if (stateDocument && stateDocument._id) {
             stateService.deleteStateDocumentById(stateDocument._id);
           }
+          usersService.incrementLoginCountByUserId(user._id || "");
           return resp.status(200).json({
             redirect_uri: formattedCallbackURL.href
           });
         });
       });
     } else {
+      const rateLimitResponseDocument = await loginRateLimitService.consume(
+        `${constants.RATE_LIMIT_KEYS.failedEmailPasswordLogin}${
+          user.email
+        }_${clientIp.toString()}`,
+        1
+      );
+      if (rateLimitResponseDocument.isRateLimitReached) {
+        log.info(
+          `${funcName}: login for user with email( ${email} ) was not successful, returning user to error`
+        );
+        usersService.blockIpForUserById({
+          _id: user._id || "",
+          ip: clientIp.toString()
+        });
+        return resp.status(429).json({
+          code: "too_many_attempts",
+          description:
+            "Your account has been blocked after multiple consecutive login attempts",
+          name: "AnomalyDetected",
+          state: 429
+        });
+      }
       log.info(
         `${funcName}: login for user with email( ${email} ) was not successful, returning user to error`
       );
-      return resp.status(403).json({
-        error: "Username or password is wrong"
+      return resp.status(401).json({
+        code: "failed_login",
+        description: "Username or password is wrong",
+        name: "FailedLogin",
+        state: 400
       });
     }
   } catch (error) {
@@ -132,7 +183,10 @@ const login = async (req: Request, resp: Response) => {
       `${funcName}: Login failed for user with email( ${email} ) with error ${error}`
     );
     return resp.status(400).json({
-      error: "something went wrong"
+      code: "server_error",
+      description: "Something went wrong",
+      name: "ServerError",
+      state: 400
     });
   }
 };

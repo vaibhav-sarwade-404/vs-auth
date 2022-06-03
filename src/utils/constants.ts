@@ -39,7 +39,15 @@ const COLlECTIONS = {
   cleanup: "cleanup",
   authorizationCode: "authorizationCode",
   refreshToken: "refreshToken",
-  logs: "logs"
+  logs: "logs",
+  loginRateLimit: "loginRateLimit",
+  userInfoRateLimit: "userInfoRateLimit"
+};
+
+const RATE_LIMIT_KEYS = {
+  loginApi: `login_`,
+  userInfoApi: `userInfo_`,
+  failedEmailPasswordLogin: `fl_`
 };
 
 export default {
@@ -47,5 +55,6 @@ export default {
   LOG_LEVEL,
   CONSOLE_COLORS,
   LOG_LEVEL_COLOR,
-  COLlECTIONS
+  COLlECTIONS,
+  RATE_LIMIT_KEYS
 };

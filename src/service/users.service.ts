@@ -1,5 +1,5 @@
 import usersModel from "../model/users.model";
-import { UsersDocument } from "../types/UsersModel";
+import { BlockUserForIp, UsersDocument } from "../types/UsersModel";
 import passwordService from "./password.service";
 
 const createUserDocument = async (
@@ -16,21 +16,31 @@ const updateUsersDocument = async (user: UsersDocument) => {
   return usersModel.updateUsersDocument(user);
 };
 
-const updateStateDocumentById = async (user: UsersDocument) => {
-  return usersModel.updateStateDocumentById(user);
-};
-
 const findUserById = async (id: string): Promise<UsersDocument> => {
   return usersModel.findUserById(id);
 };
+
 const findUserByEmail = async (email: string): Promise<UsersDocument> => {
   return usersModel.findUserByEmail(email);
+};
+
+const incrementLoginCountByUserId = async (
+  id: string
+): Promise<UsersDocument> => {
+  return usersModel.incrementLoginCountByUserId(id);
+};
+
+const blockIpForUserById = async (
+  blockUserForIpDocument: BlockUserForIp
+): Promise<UsersDocument> => {
+  return usersModel.blockIpForUserById(blockUserForIpDocument);
 };
 
 export default {
   createUserDocument,
   updateUsersDocument,
-  updateStateDocumentById,
   findUserById,
-  findUserByEmail
+  findUserByEmail,
+  incrementLoginCountByUserId,
+  blockIpForUserById
 };
