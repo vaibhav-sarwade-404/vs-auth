@@ -24,17 +24,19 @@ const token = async (req: Request, resp: Response) => {
       userId = "",
       isAuthenticated = false,
       scope = "",
+      audience = "",
       _sessionId
     } = req.session.user;
     if (isAuthenticated) {
       const userDocument = await usersService.findUserById(userId);
       if (userDocument) {
-        const tokenResponse = await tokenService.prepareTokenResponse({
+        const tokenResponse = await tokenService.prepareEndUserTokenResponse({
           user: userDocument,
           clientId,
           scope,
           grant_type,
           callbackURL,
+          audience,
           sessionId: _sessionId || ""
         });
 

@@ -5,6 +5,7 @@ export type AuthorizationCodePayload = {
   codeChallengeMethod: string;
   callbackURL: string;
   scope: string = "openid profile email";
+  audience: string;
   sessionId: string;
 };
 

@@ -14,7 +14,8 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
     code_challenge_method: codeChallengeMethod = "",
     response_type = "code",
     state = "",
-    scope = ""
+    scope = "",
+    audience = ""
   }: QueryParams = req.query;
   try {
     const clientIp =
@@ -36,7 +37,9 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
               codeChallenge,
               codeChallengeMethod,
               callbackURL: callbackURL || "",
-              scope
+              audience,
+              scope,
+              sessionId: req.session.id
             });
           formattedCallbackURL.searchParams.set(
             "code",

@@ -54,6 +54,7 @@ const login = async (req: Request, resp: Response) => {
   const codeChallenge = referrerSearchParams.get("code_challenge") || "";
   const codeChallengeMethod =
     referrerSearchParams.get("code_challenge_method") || "";
+  const audience = referrerSearchParams.get("audience") || "";
   try {
     const clientIp =
       req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
@@ -85,7 +86,7 @@ const login = async (req: Request, resp: Response) => {
       let formattedCallbackURL = new URL(
         referrerSearchParams.get("redirect_uri") || callbackURL
       );
-      let decryptedState = "",
+      let decryptedState: string = "",
         stateDocument: StateDocument;
 
       if (!req.stateDocument?.state) {
@@ -97,10 +98,7 @@ const login = async (req: Request, resp: Response) => {
           decryptedState = stateDocument.state;
         }
       } else {
-        decryptedState = stateService.decryptState(
-          // decodeURIComponent(req.stateDocument.state)
-          req.stateDocument.state
-        );
+        decryptedState = stateService.decryptState(req.stateDocument.state);
       }
       const { user: sessionUser } = req.session;
       req.session.regenerate(err => {
@@ -126,6 +124,7 @@ const login = async (req: Request, resp: Response) => {
               codeChallengeMethod,
               callbackURL,
               scope,
+              audience,
               sessionId: req.session.id
             });
           formattedCallbackURL.searchParams.set(

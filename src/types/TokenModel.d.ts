@@ -8,6 +8,7 @@ export type CreateJWTPayload = {
   scope: string = "openid profile email";
   grant_type: GrantTypes;
   callbackURL: string;
+  audience: string;
   sessionId: string;
 };
 

@@ -4,7 +4,9 @@ const ERROR_STRINGS = {
   unsupportedResponseType: "Unsupported response type",
   unknownClient: "Unknown Client",
   invalidState: "Invalid state",
-  notFound: "Not found"
+  notFound: "Not found",
+  invalidAudience: "Invalid audience",
+  invalidRequest: "Invalid request"
 };
 
 const LOG_LEVEL = {
@@ -41,7 +43,8 @@ const COLlECTIONS = {
   refreshToken: "refreshToken",
   logs: "logs",
   loginRateLimit: "loginRateLimit",
-  userInfoRateLimit: "userInfoRateLimit"
+  userInfoRateLimit: "userInfoRateLimit",
+  apis: "APIs"
 };
 
 const RATE_LIMIT_KEYS = {

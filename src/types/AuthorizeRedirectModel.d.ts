@@ -13,6 +13,7 @@ export interface QueryParams {
   code_challenge_method?: string = "plain";
   scope?: string = "openid profile email";
   state?: string;
+  audience?: string;
 }
 
 export type ClientDocument = {

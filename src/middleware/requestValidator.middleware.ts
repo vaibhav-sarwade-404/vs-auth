@@ -7,11 +7,11 @@ import RedirectValidationError from "../model/RedirectValidationError.model";
 import log from "../utils/logger";
 import AuthorizationError from "../model/AuthorizationError.model";
 import constants from "../utils/constants";
-import clientsService from "../service/clients.service";
 import stateService from "../service/state.service";
 import logService from "../service/log.service";
 import { SignupRequest } from "../types/Request";
 import RequestValidationError from "../model/RequestValidationError.Model";
+import apiService from "../service/api.service";
 
 const fileName = "requestValidator.middleware";
 
@@ -26,14 +26,14 @@ const authorizeRedirectRequest = async (
       req.query
     )}`
   );
+  const {
+    client_id = "",
+    redirect_uri = "",
+    response_type = "code",
+    state = "",
+    audience = ""
+  }: QueryParams = req.query || {};
   try {
-    const {
-      client_id = "",
-      redirect_uri = "",
-      response_type = "code",
-      state = ""
-    }: QueryParams = req.query || {};
-
     const validationError = new AuthorizationError();
 
     if (!client_id) {
@@ -44,28 +44,38 @@ const authorizeRedirectRequest = async (
       validationError.errorDescription = `${constants.ERROR_STRINGS.missingRequiredParameter} response_type`;
     }
 
-    //compare client
-    const client = await authorizeRequestService.getClientByClientId(
-      client_id,
-      {
-        exclude: ["clientSecret"]
+    if (!validationError.errorDescription) {
+      const api = await apiService.findApiByIdentifier(audience);
+      if (!api || api.type !== "custom_api") {
+        validationError.errorDescription =
+          constants.ERROR_STRINGS.invalidAudience;
       }
-    );
-    if (client) {
-      log.debug(`${funcName}: Found client for client id: ${client_id}`);
-      let compareGrantType =
-        response_type === "code" ? "authorization_code" : response_type;
-      if (!(client.grantTypes || []).includes(compareGrantType)) {
-        validationError.error = "unsupported_response_type";
-        validationError.errorDescription = `${constants.ERROR_STRINGS.unsupportedResponseType} ${response_type}`;
-      } else if (!(client.allowedCallbackUrls || []).includes(redirect_uri)) {
-        validationError.errorDescription = `${constants.ERROR_STRINGS.callbackMismatch} ${redirect_uri}`;
+      if (!validationError.errorDescription) {
+        //compare client
+        const client = await authorizeRequestService.getClientByClientId(
+          client_id,
+          {
+            exclude: ["clientSecret"]
+          }
+        );
+        if (client) {
+          log.debug(`${funcName}: Found client for client id: ${client_id}`);
+          let compareGrantType =
+            response_type === "code" ? "authorization_code" : response_type;
+          if (!(client.grantTypes || []).includes(compareGrantType)) {
+            validationError.error = "unsupported_response_type";
+            validationError.errorDescription = `${constants.ERROR_STRINGS.unsupportedResponseType} ${response_type}`;
+          } else if (
+            !(client.allowedCallbackUrls || []).includes(redirect_uri)
+          ) {
+            validationError.errorDescription = `${constants.ERROR_STRINGS.callbackMismatch} ${redirect_uri}`;
+          }
+        } else {
+          validationError.error = "invalid_request";
+          validationError.errorDescription = `${constants.ERROR_STRINGS.unknownClient} ${client_id}`;
+        }
       }
-    } else {
-      validationError.error = "invalid_request";
-      validationError.errorDescription = `${constants.ERROR_STRINGS.unknownClient} ${client_id}`;
     }
-
     if (validationError.errorDescription) {
       log.error(
         `${funcName}: /authorize request has some voilations : ${JSON.stringify(
@@ -78,12 +88,20 @@ const authorizeRedirectRequest = async (
           `/error/?client_id=${client_id}&state=${state}&error=${validationError.error}&error_description=${validationError.errorDescription}`
         );
     }
+    req.session.user = {
+      ...req.session.user,
+      authorizeValidated: true
+    };
     return next();
   } catch (error) {
     log.error(
       `${funcName}: Failed to validated /authorize request with error ${error}`
     );
-    return res.status(500).send({ error: `something went wrong` });
+    return res
+      .status(302)
+      .redirect(
+        `/error/?client_id=${client_id}&state=${state}&error_description=Generic error`
+      );
   }
 };
 
@@ -98,51 +116,20 @@ const loginRedirectRequest = async (
       req.query
     )}`
   );
-  const {
-    client_id = "",
-    redirect_uri = "",
-    response_type = "code",
-    state = ""
-  }: QueryParams = req.query || {};
+  const { client_id = "", state = "" }: QueryParams = req.query || {};
   try {
     const validationError = new AuthorizationError();
-
-    if (!client_id) {
-      validationError.errorDescription = `${constants.ERROR_STRINGS.missingRequiredParameter} client_id`;
-    } else if (!redirect_uri) {
-      validationError.errorDescription = `${constants.ERROR_STRINGS.missingRequiredParameter} redirect_uri`;
-    } else if (!response_type) {
-      validationError.errorDescription = `${constants.ERROR_STRINGS.missingRequiredParameter} response_type`;
+    if (!req.session.user || !req.session.user.authorizeValidated) {
+      throw new RedirectValidationError(constants.ERROR_STRINGS.invalidRequest);
     }
 
-    //compare client
-    const client = await clientsService.getClientByClientId(client_id, {
-      exclude: ["clientSecret"]
+    const isValidState = await stateService.isValidState({
+      id: state,
+      clientId: client_id
     });
-    if (client) {
-      log.debug(`${funcName}: Found client for client id: ${client_id}`);
-      let compareGrantType =
-        response_type === "code" ? "authorization_code" : response_type;
-      if (!(client.grantTypes || []).includes(compareGrantType)) {
-        validationError.error = "unsupported_response_type";
-        validationError.errorDescription = `${constants.ERROR_STRINGS.unsupportedResponseType} ${response_type}`;
-      } else if (!(client.allowedCallbackUrls || []).includes(redirect_uri)) {
-        validationError.errorDescription = `${constants.ERROR_STRINGS.callbackMismatch} ${redirect_uri}`;
-      } else {
-        const isValidState = await stateService.isValidState({
-          id: state,
-          clientId: client_id
-        });
-        if (!isValidState) {
-          validationError.errorDescription =
-            constants.ERROR_STRINGS.invalidState;
-        }
-      }
-    } else {
-      validationError.error = "invalid_request";
-      validationError.errorDescription = `${constants.ERROR_STRINGS.unknownClient} ${client_id}`;
+    if (!isValidState) {
+      validationError.errorDescription = constants.ERROR_STRINGS.invalidState;
     }
-
     if (validationError.errorDescription) {
       if (req.logDocument) {
         req.logDocument.type = validationError.error || "unauthorized";
@@ -305,7 +292,12 @@ const validateUserInfoRequest = (
     const { authorization = "" } = req.headers;
     if (!authorization) throw new Error("missing header");
     const tokenPayload = tokenService.verifyAccessToken(
-      authorization.replace("Bearer ", "")
+      authorization.replace("Bearer ", ""),
+      {
+        audience: "https://users.api.vsauth.com/userinfo",
+        issuer: "vs-auth",
+        algorithms: ["RS256"]
+      }
     );
     if (!tokenPayload || typeof tokenPayload === "string") {
       throw new Error("Invalid or expired token");

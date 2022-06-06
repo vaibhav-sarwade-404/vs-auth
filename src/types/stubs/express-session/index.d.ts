@@ -7,6 +7,8 @@ type User = {
   isAuthenticated?: boolean = false;
   scope?: string = "openid profile email";
   authorizationCode?: string = "";
+  audience?: string = "";
+  authorizeValidated?: boolean = false;
   _sessionId?: string;
 };
 

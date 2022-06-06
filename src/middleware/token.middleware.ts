@@ -45,6 +45,7 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
               scope,
               isAuthenticated: true,
               authorizationCode: authorizationCodeDocument.code,
+              audience: authorizationCodeDocument.payload.audience,
               _sessionId: authorizationCodeDocument.sessionId
             };
             return next();

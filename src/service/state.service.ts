@@ -12,7 +12,6 @@ const createStateDocument = async (state: StateDocument) => {
 };
 
 const isValidState = async (state: FindByClientIdState) => {
-  // const stateId = decryptState(decodeURIComponent(state.id));
   const stateId = decryptState(state.id);
   const stateDocument = await stateModel.findStateById(stateId);
   return stateDocument && state.clientId === stateDocument.clientId;
@@ -34,19 +33,12 @@ const deleteStateDocumentById = async (id: string) =>
   stateModel.deleteStateById(id);
 
 const findStateByEncryptedStateId = async (state: FindByClientIdState) => {
-  // const stateId = decryptState(decodeURIComponent(state.id));
   const stateId = decryptState(state.id);
   return stateModel.findStateById(stateId);
 };
 
 const encryptState = (str: string): string => {
-  const encryptedText = encrypt(
-    str,
-    process.env.STATE_ENCRYPTION_KEY || "",
-    "base64"
-  );
-  // return encodeURIComponent(encryptedText);
-  return encryptedText;
+  return encrypt(str, process.env.STATE_ENCRYPTION_KEY || "", "base64");
 };
 const decryptState = (state: string): string => {
   const decryptedState = decrypt(
@@ -54,18 +46,15 @@ const decryptState = (state: string): string => {
     process.env.STATE_ENCRYPTION_KEY || "",
     "base64"
   );
-  // return decodeURIComponent(decryptedState) || "";
   return decryptedState || "";
 };
 
 const getEncryptedState = (state: string, clientId: string): string => {
-  const encryptedText = encrypt(
+  return encrypt(
     JSON.stringify({ state, clientId, date: Date.now() }),
     process.env.STATE_ENCRYPTION_KEY || "",
     "base64"
   );
-  // return encodeURIComponent(encryptedText);
-  return encryptedText;
 };
 
 const getDecryptedState = async (

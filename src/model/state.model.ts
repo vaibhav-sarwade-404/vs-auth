@@ -73,7 +73,6 @@ const createStateDocument = async (
       );
       return {
         ...stateDocument,
-        // _id: encodeURIComponent(encryptedId)
         _id: encryptedId
       };
     })
