@@ -4,7 +4,7 @@ import domService from "../service/dom.service";
 import pageService from "../service/page.service";
 import { QueryParams } from "../types/AuthorizeRedirectModel";
 
-export const loginPageLoadController = async (req: Request, res: Response) => {
+const login = async (req: Request, res: Response) => {
   const {
     client_id: clientId = "",
     redirect_uri: callbackURL = "",
@@ -23,3 +23,13 @@ export const loginPageLoadController = async (req: Request, res: Response) => {
   });
   return res.status(200).send(stringifiedDom);
 };
+
+const passwordReset = async (req: Request, res: Response) => {
+  const page = (await pageService.getHtmlForPage("password_reset")) || "";
+  const stringifiedDom = domService.parseDocAndInjectDataConfig(page, {
+    _csrf: req.csrfToken()
+  });
+  return res.status(200).send(stringifiedDom);
+};
+
+export default { login, passwordReset };

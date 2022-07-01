@@ -3,26 +3,35 @@ import { Request, Response, NextFunction } from "express";
 import authorizeRequestService from "../service/clients.service";
 import tokenService from "../service/token.service";
 import { QueryParams } from "../types/AuthorizeRedirectModel";
-import RedirectValidationError from "../model/RedirectValidationError.model";
-import log from "../utils/logger";
+import { Logger } from "../utils/logger";
 import AuthorizationError from "../model/AuthorizationError.model";
 import constants from "../utils/constants";
 import stateService from "../service/state.service";
 import logService from "../service/log.service";
-import { SignupRequest } from "../types/Request";
+import {
+  ChangePasswordRequest,
+  ForgotPasswordRequest,
+  SignupRequest,
+  TicketRequestParams
+} from "../types/Request";
 import RequestValidationError from "../model/RequestValidationError.Model";
 import apiService from "../service/api.service";
+import ticketService from "../service/ticket.service";
+import emailService from "../service/email.service";
+import urlUtils from "../utils/urlUtils";
+import HttpException, { UnauthorizedError } from "../model/HttpException";
+import { EMAIL_TYPES } from "../types/EmailModel";
 
 const fileName = "requestValidator.middleware";
 
 const authorizeRedirectRequest = async (
   req: Request,
-  res: Response,
+  _resp: Response,
   next: NextFunction
 ) => {
-  const funcName = `${fileName}.${authorizeRedirectRequest.name}`;
-  log.debug(
-    `${funcName}: Validating /authorize request with query params : ${JSON.stringify(
+  const logger = new Logger(`${fileName}.${authorizeRedirectRequest.name}`);
+  logger.debug(
+    `Validating /authorize request with query params : ${JSON.stringify(
       req.query
     )}`
   );
@@ -59,7 +68,7 @@ const authorizeRedirectRequest = async (
           }
         );
         if (client) {
-          log.debug(`${funcName}: Found client for client id: ${client_id}`);
+          logger.debug(`Found client for client id: ${client_id}`);
           let compareGrantType =
             response_type === "code" ? "authorization_code" : response_type;
           if (!(client.grantTypes || []).includes(compareGrantType)) {
@@ -77,16 +86,14 @@ const authorizeRedirectRequest = async (
       }
     }
     if (validationError.errorDescription) {
-      log.error(
-        `${funcName}: /authorize request has some voilations : ${JSON.stringify(
+      logger.error(
+        `/authorize request has some voilations : ${JSON.stringify(
           validationError.errorAsObject
         )} `
       );
-      return res
-        .status(302)
-        .redirect(
-          `/error/?client_id=${client_id}&state=${state}&error=${validationError.error}&error_description=${validationError.errorDescription}`
-        );
+      validationError.addQueryParam = { field: "client_id", value: client_id };
+      validationError.addQueryParam = { field: "state", value: state };
+      return next(validationError);
     }
     req.session.user = {
       ...req.session.user,
@@ -94,33 +101,31 @@ const authorizeRedirectRequest = async (
     };
     return next();
   } catch (error) {
-    log.error(
-      `${funcName}: Failed to validated /authorize request with error ${error}`
-    );
-    return res
-      .status(302)
-      .redirect(
-        `/error/?client_id=${client_id}&state=${state}&error_description=Generic error`
-      );
+    logger.error(`Failed to validated /authorize request with error ${error}`);
+    const validationError = new AuthorizationError();
+    validationError.addQueryParam = { field: "client_id", value: client_id };
+    validationError.addQueryParam = { field: "state", value: state };
+    return next(validationError);
   }
 };
 
 const loginRedirectRequest = async (
   req: Request,
-  res: Response,
+  _resp: Response,
   next: NextFunction
 ) => {
-  const funcName = `${fileName}.${loginRedirectRequest.name}`;
-  log.debug(
-    `${funcName}: Validating /authorize request with query params : ${JSON.stringify(
-      req.query
-    )}`
+  const logger = new Logger(`${fileName}.${loginRedirectRequest.name}`);
+  logger.debug(
+    `Validating /login request with query params : ${JSON.stringify(req.query)}`
   );
   const { client_id = "", state = "" }: QueryParams = req.query || {};
   try {
     const validationError = new AuthorizationError();
     if (!req.session.user || !req.session.user.authorizeValidated) {
-      throw new RedirectValidationError(constants.ERROR_STRINGS.invalidRequest);
+      validationError.addQueryParam = { field: "client_id", value: client_id };
+      validationError.addQueryParam = { field: "state", value: state };
+      validationError.errorDescription = constants.ERROR_STRINGS.invalidRequest;
+      return next(validationError);
     }
 
     const isValidState = await stateService.isValidState({
@@ -132,47 +137,42 @@ const loginRedirectRequest = async (
     }
     if (validationError.errorDescription) {
       if (req.logDocument) {
-        req.logDocument.type = validationError.error || "unauthorized";
+        req.logDocument.type = "unauthorized";
         req.logDocument.decription = validationError.errorDescription;
         logService.createLogEvent(req.logDocument);
       }
-      log.error(
-        `${funcName}: /login request has some voilations : ${JSON.stringify(
+      logger.error(
+        `/login request has some voilations : ${JSON.stringify(
           validationError.errorAsObject
         )} `
       );
-      return res
-        .status(302)
-        .redirect(
-          `/error/?client_id=${client_id}&state=${state}&error=${validationError.error}&error_description=${validationError.errorDescription}`
-        );
+      validationError.addQueryParam = { field: "client_id", value: client_id };
+      validationError.addQueryParam = { field: "state", value: state };
+      return next(validationError);
     }
     return next();
   } catch (error) {
-    log.error(
-      `${funcName}: Failed to validated /login request with error ${error}`
-    );
-    return res
-      .status(302)
-      .redirect(
-        `/error/?client_id=${client_id}&state=${state}&error=anomaly_detected&error_description=unauthorized`
-      );
+    logger.error(`Failed to validated /login request with error ${error}`);
+    const validationError = new AuthorizationError();
+    validationError.addQueryParam = { field: "client_id", value: client_id };
+    validationError.addQueryParam = { field: "state", value: state };
+    validationError.error = "anomaly_detected";
+    validationError.errorDescription = "unauthorized";
+    return next(validationError);
   }
 };
 
 const signupRequest = async (
   req: Request,
-  res: Response,
+  _resp: Response,
   next: NextFunction
 ) => {
-  const funcName = `${fileName}.${signupRequest.name}`;
-  log.debug(
-    `${funcName}: Validating /users/signup request with payload params : ${JSON.stringify(
-      {
-        ...req.body,
-        password: "*********"
-      }
-    )}`
+  const logger = new Logger(`${fileName}.${signupRequest.name}`);
+  logger.debug(
+    `Validating /users/signup request with payload params : ${JSON.stringify({
+      ...req.body,
+      password: "*********"
+    })}`
   );
   const { clientId = "", state = "" }: SignupRequest = req.body || {};
   try {
@@ -186,12 +186,12 @@ const signupRequest = async (
       }
     });
     if (validationError.error.length) {
-      log.error(
-        `${funcName}: /users/signup request has some voilations : ${JSON.stringify(
+      logger.error(
+        `/users/signup request has some voilations : ${JSON.stringify(
           validationError.error
         )} `
       );
-      return res.status(400).send(validationError.error);
+      return next(validationError);
     }
     const stateDocument = await stateService.findStateByEncryptedStateId({
       id: state,
@@ -202,42 +202,36 @@ const signupRequest = async (
         field: "state",
         error: "Invalid state"
       };
-      log.error(
-        `${funcName}: /users/signup request has some voilations : ${JSON.stringify(
+      logger.error(
+        `/users/signup request has some voilations : ${JSON.stringify(
           validationError.error
         )} `
       );
-      return res.status(400).json(validationError.error);
+      return next(validationError);
     }
     req.stateDocument = stateDocument;
     return next();
   } catch (error) {
-    log.error(
-      `${funcName}: Failed to validated /users/signup request with error ${error}`
+    logger.error(
+      `Failed to validated /users/signup request with error ${error}`
     );
-    return res.status(500).json({ error: `something went wrong` });
+    return next(new HttpException());
   }
 };
 
 const loginRequest = async (
   req: Request,
-  res: Response,
+  _resp: Response,
   next: NextFunction
 ) => {
-  const funcName = `${fileName}.${loginRequest.name}`;
-  log.debug(
-    `${funcName}: Validating /users/login request with payload params : ${JSON.stringify(
-      {
-        ...req.body,
-        password: "*********"
-      }
-    )}`
+  const logger = new Logger(`${fileName}.${loginRequest.name}`);
+  logger.debug(
+    `Validating /users/login request with payload params : ${JSON.stringify({
+      ...req.body,
+      password: "*********"
+    })}`
   );
-  const {
-    clientId = "",
-    state = "",
-    email = ""
-  }: SignupRequest = req.body || {};
+  const { clientId = "", state = "" }: SignupRequest = req.body || {};
   try {
     const validationError = new RequestValidationError();
     ["clientId", "callbackURL", "state", "email", "password"].forEach(field => {
@@ -249,12 +243,12 @@ const loginRequest = async (
       }
     });
     if (validationError.error.length) {
-      log.error(
-        `${funcName}: /users/login request has some voilations : ${JSON.stringify(
+      logger.error(
+        `/users/login request has some voilations : ${JSON.stringify(
           validationError.error
         )} `
       );
-      return res.status(400).send(validationError.error);
+      return next(validationError);
     }
 
     const isValidState = await stateService.isValidState({
@@ -266,28 +260,24 @@ const loginRequest = async (
         field: "state",
         error: "Invalid state"
       };
-      log.error(
-        `${funcName}: /users/login request has some voilations : ${JSON.stringify(
+      logger.error(
+        `/users/login request has some voilations : ${JSON.stringify(
           validationError.error
         )} `
       );
-      return res.status(400).send(validationError.error);
+      return next(validationError);
     }
     return next();
   } catch (error) {
-    log.error(
-      `${funcName}: Failed to validated /users/login request with error ${error}`
+    logger.error(
+      `Failed to validated /users/login request with error ${error}`
     );
-    return res.status(500).send({ error: `something went wrong` });
+    return next(new HttpException());
   }
 };
 
-const validateUserInfoRequest = (
-  req: Request,
-  resp: Response,
-  next: NextFunction
-) => {
-  const funcName = `requestValidator.middlware.${validateUserInfoRequest.name}`;
+const userInfoRequest = (req: Request, _resp: Response, next: NextFunction) => {
+  const logger = new Logger(`${fileName}.${userInfoRequest.name}`);
   try {
     const { authorization = "" } = req.headers;
     if (!authorization) throw new Error("missing header");
@@ -300,84 +290,250 @@ const validateUserInfoRequest = (
       }
     );
     if (!tokenPayload || typeof tokenPayload === "string") {
-      throw new Error("Invalid or expired token");
+      return next(new UnauthorizedError("Invalid or expired access token"));
     }
     req.session.user = {};
     req.session.user.userId = tokenPayload.sub || "";
     req.session.user.isAuthenticated = true;
     return next();
   } catch (error) {
-    log.error(
-      `${funcName}: Something went wrong while validating access token to fetch userinfo with error: ${error}`
+    logger.error(
+      `Something went wrong while validating access token to fetch userinfo with error: ${error}`
     );
-    return resp.status(403).json({
-      error: "Invalid access token"
-    });
+    return next(new UnauthorizedError("Invalid access token"));
   }
 };
 
-const validateLogoutRequest = async (
+const logoutRequest = async (
   req: Request,
-  resp: Response,
+  _resp: Response,
   next: NextFunction
 ) => {
-  const funcName = `requestValidator.middlware.${validateLogoutRequest.name}`;
+  const logger = new Logger(`${fileName}.${logoutRequest.name}`);
   const {
     client_id: clientId = "",
     redirect_uri: redirectUri = ""
   }: QueryParams = req.query;
   try {
-    if (!clientId)
-      throw new RedirectValidationError("missing required parameter client_id");
-    if (!redirectUri)
-      throw new Error("missing required parameter : redirect_uri");
+    const validationError = new AuthorizationError();
+    if (!clientId) {
+      validationError.addQueryParam = {
+        field: "error_description",
+        value: "missing required parameter client_id"
+      };
+      return next(validationError);
+    }
+    if (!redirectUri) {
+      validationError.addQueryParam = {
+        field: "error_description",
+        value: "missing required parameter redirect_uri"
+      };
+      return next(validationError);
+    }
     const client = await authorizeRequestService.getClientByClientId(clientId, {
       exclude: ["clientSecret"]
     });
-    if (!client)
-      throw new RedirectValidationError("invalid parameter client_id");
-    if (client) {
-      log.debug(`${funcName}: Found client for client id: ${clientId}`);
-      if (!(client.allowedLogoutUrls || []).includes(redirectUri)) {
-        log.debug(
-          `${funcName}: redirectUri ${redirectUri} is not registered for client: ${clientId}`
-        );
-        throw new RedirectValidationError("invalid parameter redirect_uri");
-      }
+    if (!client) {
+      validationError.addQueryParam = {
+        field: "error_description",
+        value: "invalid parameter redirect_uri"
+      };
+      return next(validationError);
     }
-    log.debug(
-      `${funcName}: logout payload validtion successful for clientId (${clientId})`
+    logger.debug(`Found client for client id: ${clientId}`);
+    if (!(client.allowedLogoutUrls || []).includes(redirectUri)) {
+      logger.debug(
+        `redirectUri ${redirectUri} is not registered for client: ${clientId}`
+      );
+      validationError.addQueryParam = {
+        field: "error_description",
+        value: "invalid parameter redirect_uri"
+      };
+      return next(validationError);
+    }
+    logger.debug(
+      `logout payload validtion successful for clientId (${clientId})`
     );
     return next();
   } catch (error) {
-    if (error instanceof RedirectValidationError) {
-      log.error(
-        `${funcName}: Redirect validation error while logout request validation with error:${JSON.stringify(
-          error
-        )}`
-      );
-      return resp
-        .status(302)
-        .redirect(
-          `/error/?client_id=${clientId}&error=invalid_request&error_description=${error.errMsg}`
-        );
-    }
-    log.error(
-      `${funcName}: Something went wrong while validating logout request parameters with error: ${error}`
+    logger.error(
+      `Something went wrong while validating logout request parameters with error: ${error}`
     );
-    return resp
-      .status(302)
-      .redirect(
-        `/error/?client_id=${clientId}&error=invalid_request&error_description=Generic error`
+    return next(new AuthorizationError());
+  }
+};
+
+const forgotPasswordRequest = async (
+  req: Request,
+  _resp: Response,
+  next: NextFunction
+) => {
+  const logger = new Logger(`${fileName}.${forgotPasswordRequest.name}`);
+  try {
+    const validationError = new RequestValidationError();
+    ["client_id", "email"].forEach(field => {
+      if (!(req.body || {})[field]) {
+        validationError.addError = {
+          field,
+          error: `${field} is required`
+        };
+      }
+    });
+    if (validationError.error.length) {
+      logger.error(
+        `/users/forgot-password request has some voilations : ${JSON.stringify(
+          validationError.error
+        )} `
       );
+      return next(validationError);
+    }
+    const { client_id: clientId = "" }: ForgotPasswordRequest = req.body || {};
+    const client = await authorizeRequestService.getClientByClientId(clientId, {
+      exclude: ["clientSecret"]
+    });
+    if (!client) {
+      validationError.addError = {
+        field: "client_id",
+        error: "client_id is invalid"
+      };
+      return next(validationError);
+    }
+    req.clientDocument = client;
+    logger.debug(`Found client for client id: ${clientId}`);
+    logger.debug(
+      `forgot password payload validtion successful for clientId (${clientId})`
+    );
+    return next();
+  } catch (error) {
+    logger.error(
+      `Something went wrong while validating forgot password request with error: ${error}`
+    );
+    return next(new HttpException());
+  }
+};
+
+const passwordReset = async (
+  req: Request,
+  resp: Response,
+  next: NextFunction
+) => {
+  const logger = new Logger(`${fileName}.${passwordReset.name}`);
+  try {
+    const validationError = new RequestValidationError();
+    ["newPassword", "ticket", "_csrf"].forEach(field => {
+      if (!(req.body || {})[field]) {
+        validationError.addError = {
+          field,
+          error: `${field} is required`
+        };
+      }
+    });
+    if (validationError.error.length) {
+      logger.error(
+        `/users/password-reset request has some voilations : ${JSON.stringify(
+          validationError.error
+        )} `
+      );
+      return next(validationError);
+    }
+    const { ticket }: ChangePasswordRequest = req.body || {};
+    const ticketDocument = await ticketService.findTicketById(ticket);
+    if (!ticketDocument) {
+      logger.error(`Ticket is expired or invalid`);
+      const emailDocument = await emailService.getEmailDocument(
+        "PASSWORD_RESET_EMAIL"
+      );
+      const url = urlUtils.createUrlWithHash(emailDocument.redirectTo, {
+        success: false,
+        decription: "This link is already used, or expired"
+      });
+      logger.error(`returning user redirect URL to used or expired page`);
+      return resp.status(200).json({ redirect_url: url });
+    }
+    if (ticketDocument.expires < new Date()) {
+      logger.error(
+        `ticket is expired, return retunrnTo url from email configurations`
+      );
+      const emailDocument = await emailService.getEmailDocument(
+        ticketDocument.ticketContext.type
+      );
+      if (!emailDocument) {
+        logger.error(
+          `Email document is also not found, returning invalid ticket error`
+        );
+        validationError.addError = {
+          field: "ticket",
+          error: "ticket is invalid"
+        };
+        return next(validationError);
+      }
+      const url = urlUtils.createUrlWithHash(emailDocument.redirectTo, {
+        success: false,
+        decription: "This link is expired"
+      });
+      return resp.status(200).json({ redirect_url: url });
+    }
+    req.ticketDocument = ticketDocument;
+    logger.debug(`Found ticket document for password reset request`);
+    logger.debug(
+      `password reset payload validtion successful for ticket(${ticket})`
+    );
+    return next();
+  } catch (error) {
+    logger.error(
+      `Something went wrong while validating password reset request with error: ${error}`
+    );
+    return next(new HttpException());
+  }
+};
+
+const emailAction = async (
+  req: Request,
+  _resp: Response,
+  next: NextFunction,
+  emailType: EMAIL_TYPES
+) => {
+  const logger = new Logger(`${fileName}.${emailAction.name}`);
+  try {
+    const { ticket = "" }: TicketRequestParams = req.query || {};
+    if (!ticket) {
+      const validationError = new RequestValidationError();
+      validationError.addError = {
+        field: "ticket",
+        error: "ticket is required"
+      };
+      return next(validationError);
+    }
+    const emailDocument = await emailService.getEmailDocument(emailType);
+    const ticketDocument = await ticketService.findTicketById(ticket);
+    if (!ticketDocument) {
+      const url = urlUtils.createUrlWithHash(emailDocument.redirectTo, {
+        success: false,
+        decription: "This link is already used, or expired"
+      });
+      const validationError = new AuthorizationError();
+      validationError.redirectUrl = url || "#";
+      return next(validationError);
+    }
+    req.ticketDocument = ticketDocument;
+    req.emailDocument = emailDocument;
+    return next();
+  } catch (error) {
+    logger.error(
+      `Something went wrong while validating email action request with error: ${error}`
+    );
+    return next(new HttpException());
   }
 };
 
 export default {
-  validateUserInfoRequest,
-  validateLogoutRequest,
+  userInfoRequest,
+  logoutRequest,
   authorizeRedirectRequest,
   loginRedirectRequest,
   signupRequest,
-  loginRequest
+  loginRequest,
+  forgotPasswordRequest,
+  passwordReset,
+  emailAction
 };

@@ -2,7 +2,7 @@ import mongoose, { Schema } from "mongoose";
 import { ApisDocument } from "../types/ApisModel";
 
 import constants from "../utils/constants";
-import log from "../utils/logger";
+import { Logger } from "../utils/logger";
 
 const ApiSchema = new Schema(
   {
@@ -21,17 +21,27 @@ const ApiModel = mongoose.model("APIs", ApiSchema, constants.COLlECTIONS.apis);
 const findApiByIdentifier = async (
   identifier: string
 ): Promise<ApisDocument> => {
-  const funcName = `api.model.${findApiByIdentifier.name}`;
-  log.debug(
-    `${funcName}: looking up APIs document with identifier (${identifier})`
-  );
+  const log = new Logger(findApiByIdentifier.name);
+  log.debug(`looking up APIs document with identifier (${identifier})`);
   return ApiModel.findOne({ identifier }).catch(error =>
     log.error(
-      `${funcName}: Somethine went wrong while getting API by identifier ${identifier} with error : ${error}`
+      `Somethine went wrong while getting API by identifier ${identifier} with error : ${error}`
     )
   );
 };
 
+const findByApiId = async (id: string): Promise<ApisDocument> => {
+  const log = new Logger(findByApiId.name);
+  log.debug(`looking up APIs document with id (${id})`);
+  return ApiModel.findOne({ _id: new mongoose.Types.ObjectId(id) }).catch(
+    error =>
+      log.error(
+        `Somethine went wrong while getting API by identifier ${id} with error : ${error}`
+      )
+  );
+};
+
 export default {
-  findApiByIdentifier
+  findApiByIdentifier,
+  findByApiId
 };

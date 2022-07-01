@@ -5,7 +5,8 @@ import {
   createDecipheriv,
   createHmac
 } from "crypto";
-import log from "./logger";
+import log, { Logger } from "./logger";
+import transformer from "./transformer";
 const algorithm = "aes-192-cbc";
 
 type BufferEncoding =
@@ -97,4 +98,87 @@ export const generateHMAC = (text: string, secret: string): string => {
     );
     return text;
   }
+};
+
+type RuleName = "uppercase" | "lowercase" | "numbers" | "symbols";
+
+export const generateRandomChars = (
+  rules: {
+    ruleName: RuleName;
+    numberOfChars: number;
+  }[]
+): string => {
+  const log = new Logger(generateRandomChars.name);
+  const result = [] as string[];
+  try {
+    rules.forEach(rule => {
+      const { ruleName, numberOfChars } = rule;
+      if (ruleName === "uppercase") {
+        if (numberOfChars > 25)
+          throw new Error(
+            `uppercase rule is invalid: cannot generate more that 25 chars with single rule`
+          );
+        let uppercaseArray = [] as string[];
+        let tempIndexArray = [] as number[];
+        while (true) {
+          const randomInt = Math.floor(Math.random() * 25);
+          if (!tempIndexArray.includes(randomInt)) {
+            uppercaseArray.push(transformer.digitToCapitalLetter(randomInt));
+            tempIndexArray.push(randomInt);
+          }
+          if (uppercaseArray.length === numberOfChars) break;
+        }
+        result.push(uppercaseArray.join(""));
+      }
+
+      if (ruleName === "lowercase") {
+        if (numberOfChars > 25)
+          throw new Error(
+            `lowercase rule is invalid: cannot generate more that 25 chars with single rule`
+          );
+        let lowercaseArray = [] as string[];
+        let tempIndexArray = [] as number[];
+
+        while (true) {
+          const randomInt = Math.floor(Math.random() * 25);
+          if (!tempIndexArray.includes(randomInt)) {
+            lowercaseArray.push(transformer.digitToLowrcaseLetter(randomInt));
+            tempIndexArray.push(randomInt);
+          }
+          if (lowercaseArray.length === numberOfChars) break;
+        }
+        result.push(lowercaseArray.join(""));
+      }
+
+      if (ruleName === "numbers") {
+        let numberArray = [] as number[];
+        while (true) {
+          const randomInt = Math.floor(Math.random() * 9);
+          numberArray.push(randomInt);
+          if (numberArray.length === numberOfChars) break;
+        }
+        result.push(numberArray.join(""));
+      }
+
+      if (ruleName === "symbols") {
+        let symbolsArray = [] as string[];
+        while (true) {
+          const symbols = ["-", "_", "+"];
+          const randomInt = Math.floor(Math.random() * 2);
+          symbolsArray.push(symbols[randomInt]);
+          if (symbolsArray.length === numberOfChars) break;
+        }
+        result.push(symbolsArray.join(""));
+      }
+    });
+  } catch (error) {
+    log.error(
+      `Something went wrong while generating random chars with error: ${error}`
+    );
+  }
+  return result
+    .join("")
+    .split("")
+    .sort(() => Math.random() - 0.5)
+    .join("");
 };

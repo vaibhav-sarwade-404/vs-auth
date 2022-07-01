@@ -1,11 +1,29 @@
 import fs from "fs";
 import jwt, { Algorithm, JwtPayload } from "jsonwebtoken";
 import path from "path";
+import HttpException from "../model/HttpException";
+import { ApisDocument } from "../types/ApisModel";
 
-import { CreateJWTPayload, TokenResponse } from "../types/TokenModel";
-import log from "../utils/logger";
+import {
+  CreateJWTPayload,
+  TokenResponse,
+  GrantTypes
+} from "../types/TokenModel";
+import { UserDocument } from "../types/UsersModel";
+import log, { Logger } from "../utils/logger";
 import apiService from "./api.service";
 import refreshTokenService from "./refreshToken.service";
+
+const JWT_SECRET = fs.readFileSync(
+  path.join(__dirname, "..", "..", "certs", "privateKey.pem")
+);
+const JWT_PUBLIC_KEY = JSON.parse(
+  fs
+    .readFileSync(
+      path.join(__dirname, "..", "..", "public", ".well-known", "jwks.json")
+    )
+    .toString()
+);
 
 const prepareEndUserTokenResponse = async ({
   user,
@@ -106,7 +124,174 @@ const verifyAccessToken = (
   }
 };
 
+const getAccessToken = async ({
+  grant_type,
+  clientId = "",
+  scope = "",
+  apiDocument,
+  user
+}: {
+  grant_type: GrantTypes;
+  clientId: string;
+  scope: string;
+  apiDocument: ApisDocument;
+  user: UserDocument;
+}) => {
+  const log = new Logger(`token.service.${getAccessToken.name}`);
+
+  try {
+    const tokenExpiry =
+      apiDocument.tokenExpiry || process.env.JWT_EXPIRTY_IN_SECS || 86400;
+
+    //Authorization code
+    if (grant_type === "authorization_code") {
+      const payload = {
+        sub: String(user._id),
+        azp: clientId,
+        scope,
+        aud: [apiDocument.identifier, `${apiDocument.identifier}/userinfo`]
+      };
+      return jwt.sign(payload, JWT_SECRET, {
+        algorithm: "RS256",
+        expiresIn: Number(tokenExpiry),
+        issuer: "vs-auth",
+        keyid: JWT_PUBLIC_KEY.kid,
+        header: { alg: "RS256", kid: JWT_PUBLIC_KEY.kid, typ: "JWT" },
+        mutatePayload: true
+      });
+    }
+
+    //client_credentials
+
+    if (grant_type === "client_credentials") {
+      const payload = {
+        sub: clientId,
+        azp: clientId,
+        scope: apiDocument.permissions,
+        aud: apiDocument.identifier
+      };
+      return jwt.sign(payload, JWT_SECRET, {
+        algorithm: "RS256",
+        expiresIn: Number(tokenExpiry),
+        issuer: "vs-auth",
+        keyid: JWT_PUBLIC_KEY.kid,
+        header: { alg: "RS256", kid: JWT_PUBLIC_KEY.kid, typ: "JWT" },
+        mutatePayload: true
+      });
+    }
+  } catch (error) {
+    log.error(
+      ` Something went wrong while generting access token with error :${error}`
+    );
+    throw error;
+  }
+};
+
+const getIDToken = async ({
+  clientId = "",
+  scope = "",
+  apiDocument,
+  user
+}: {
+  clientId: string;
+  scope: string;
+  apiDocument: ApisDocument;
+  user: UserDocument;
+}) => {
+  const log = new Logger(`token.service.${getIDToken.name}`);
+  try {
+    const tokenExpiry =
+      apiDocument.tokenExpiry || process.env.JWT_EXPIRTY_IN_SECS || 86400;
+    const payload = {
+      sub: String(user._id),
+      azp: clientId,
+      "https://vs-auth.com/email": user.email,
+      scope,
+      aud: [apiDocument.identifier, `${apiDocument.identifier}/userinfo`]
+    };
+    return jwt.sign(payload, JWT_SECRET, {
+      algorithm: "RS256",
+      expiresIn: Number(tokenExpiry),
+      issuer: "vs-auth",
+      keyid: JWT_PUBLIC_KEY.kid,
+      header: { alg: "RS256", kid: JWT_PUBLIC_KEY.kid, typ: "JWT" },
+      mutatePayload: true
+    });
+  } catch (error) {
+    log.error(
+      ` Something went wrong while generting access token with error :${error}`
+    );
+    throw error;
+  }
+};
+
+const prepareTokenResponse = async ({
+  grant_type,
+  user,
+  clientId = "",
+  scope,
+  callbackURL,
+  sessionId,
+  apiDocument
+}: {
+  grant_type: GrantTypes;
+  user: UserDocument;
+  clientId: string;
+  scope: string;
+  callbackURL: string;
+  sessionId: string;
+  apiDocument: ApisDocument;
+}) => {
+  const log = new Logger(`token.service.${prepareTokenResponse}`);
+  try {
+    let id_token, refresh_token;
+    const access_token = await getAccessToken({
+      grant_type,
+      apiDocument,
+      clientId,
+      scope,
+      user
+    });
+    log.debug(`generated Access token`);
+    if (
+      (grant_type === "authorization_code" || grant_type === "refresh_token") &&
+      scope.includes("openid")
+    ) {
+      id_token = await getIDToken({ apiDocument, clientId, scope, user });
+      log.debug(`generated ID token`);
+    }
+
+    if (scope.includes("offline_access")) {
+      const refreshTokenDocument =
+        await refreshTokenService.createRefreshTokenDocument({
+          clientId,
+          payload: JSON.stringify({ callbackURL, userId: user._id || "" }),
+          lock: false,
+          sessionId
+        });
+      if (refreshTokenDocument) {
+        refresh_token = refreshTokenDocument.refreshToken;
+        log.debug(`generated refresh token`);
+      }
+    }
+
+    return {
+      access_token,
+      token_type: "Bearer",
+      ...(refresh_token ? { refresh_token } : {}),
+      ...(id_token ? { id_token } : {}),
+      expires_in: apiDocument.tokenExpiry
+    };
+  } catch (error) {
+    log.error(
+      `Something went wrong while generting token response with error :${error}`
+    );
+    throw error;
+  }
+};
+
 export default {
   prepareEndUserTokenResponse,
-  verifyAccessToken
+  verifyAccessToken,
+  prepareTokenResponse
 };

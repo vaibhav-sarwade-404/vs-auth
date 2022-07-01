@@ -1,4 +1,5 @@
 import "express-session";
+import { ApisDocument } from "../../ApisModel";
 
 type User = {
   clientId?: string = "";
@@ -9,6 +10,7 @@ type User = {
   authorizationCode?: string = "";
   audience?: string = "";
   authorizeValidated?: boolean = false;
+  apiDocument?: ApisDocument;
   _sessionId?: string;
 };
 

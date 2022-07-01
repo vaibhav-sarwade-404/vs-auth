@@ -27,4 +27,40 @@ const log = {
   }
 };
 
+class Logger {
+  private _loggerName: string;
+  constructor(loggerName: string) {
+    this._loggerName = loggerName;
+  }
+
+  get loggerName() {
+    return this._loggerName;
+  }
+
+  private formatMsg(
+    msg: string,
+    _logLevel = logLevel,
+    msgColor: string = LOG_LEVEL_COLOR[LOG_LEVEL.info]
+  ) {
+    //prettier-ignore
+    msg = `[${dayjs().format()}] ${CONSOLE_COLORS.green}${_logLevel.toUpperCase()}${CONSOLE_COLORS.reset}: ${msgColor}${this._loggerName}: ${msg}${CONSOLE_COLORS.reset}`;
+    return msg;
+  }
+
+  info(msg: string) {
+    console.log(this.formatMsg(msg, LOG_LEVEL.info));
+  }
+  warn(msg: string) {
+    console.warn(this.formatMsg(msg, LOG_LEVEL.warn, CONSOLE_COLORS.yellow));
+  }
+  error(msg: string) {
+    console.error(this.formatMsg(msg, LOG_LEVEL.error, CONSOLE_COLORS.red));
+  }
+  debug(msg: string) {
+    if (logLevel?.toLowerCase() !== LOG_LEVEL.debug) return;
+    console.log(this.formatMsg(msg));
+  }
+}
+
 export default log;
+export { Logger };

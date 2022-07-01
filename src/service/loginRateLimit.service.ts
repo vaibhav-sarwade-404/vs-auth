@@ -8,6 +8,11 @@ const consume = async (
   return loginRateLimitModel.consume(key, point);
 };
 
+const deleteDocumentByKey = async (key: string) => {
+  return loginRateLimitModel.deleteDocumentByKey(key);
+};
+
 export default {
-  consume
+  consume,
+  deleteDocumentByKey
 };

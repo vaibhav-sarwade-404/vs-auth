@@ -7,6 +7,11 @@ const findApiByIdentifier = async (
   return apiModel.findApiByIdentifier(identifier);
 };
 
+const findByApiId = async (id: string): Promise<ApisDocument> => {
+  return apiModel.findByApiId(id);
+};
+
 export default {
-  findApiByIdentifier
+  findApiByIdentifier,
+  findByApiId
 };

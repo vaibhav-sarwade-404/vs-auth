@@ -29,12 +29,16 @@ VS-auth is POC on OAuth 2.0 and OIDC specification for testing understanding for
   - `/users/login` - 100 requests per IP.
   - `/users/login` - 10 failed login event per email per IP, then access to email from that IP is blocked
   - `/userinfo` - 10 requests per IP
+- Management API
+  - Client management api's (create,update,read,delete)
+  - User management api's (create,update,read,delete)
+- Schema validations
+- Emails and email actions (verify, blocked - brute force blocked for IP, password reset)
+- Password reset support via email
 
 ## Features to implemented
 
-- [ ] Management API's to manage end users.
 - [ ] Management API's to manage end tenant users.
-- [ ] Management API's to manage applications (callbacks, logout callbacks, grant types, client secret rotation)
 - [ ] Management API's to manage API audience, token expiry.
 - [ ] Management API's to deploy login / error page HTML.
 
@@ -53,6 +57,7 @@ This project is implemented with below tech / packages:
 - [Cookie-parser] - Cookie parser used for session cookies.
 - [Connected-mongo-db-session]: For persisted sessions in Mongo DB
 - [Bcrypt]: For password hashing and comparing hashed password.
+- [Nodemailer]: For sending emails
 
 ## License
 
@@ -71,3 +76,4 @@ MIT
 [connected-mongo-db-session]: https://github.com/mongodb-js/connect-mongodb-session
 [bcrypt]: https://github.com/kelektiv/node.bcrypt.js
 [cookie-parser]: https://github.com/expressjs/cookie-parser
+[nodemailer]: https://nodemailer.com/about/

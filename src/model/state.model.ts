@@ -89,7 +89,7 @@ const updateStateDocument = async (
   const funcName = updateStateDocument.name;
   return StateModel.updateOne(
     { $and: [{ clientId: _state.clientId }, { state: _state.state }] },
-    { _state },
+    { $set: { ..._state } },
     { upsert: true }
   ).catch(err => {
     log.error(
@@ -104,7 +104,7 @@ const updateStateDocumentById = async (
   const funcName = updateStateDocument.name;
   return StateModel.updateOne(
     { _id: _state._id },
-    { _state },
+    { $set: { ..._state } },
     { upsert: true }
   ).catch(err => {
     log.error(

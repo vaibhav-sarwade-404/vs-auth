@@ -2,7 +2,7 @@ import { Client } from "../model/client.model";
 
 export type ClientDocumentKeys = keyof typeof Client;
 export type FindByClientIdOptions = {
-  exclude: ClientDocumentKeys[];
+  exclude?: ClientDocumentKeys[];
 };
 
 export interface QueryParams {
@@ -14,18 +14,24 @@ export interface QueryParams {
   scope?: string = "openid profile email";
   state?: string;
   audience?: string;
+  ticket?: string;
 }
+
+export type ClientApi = {
+  apiId: string;
+  scopes: string[];
+};
 
 export type ClientDocument = {
   clientId: string;
   clientSecret: string;
-  applicationType: string;
+  applicationType: "spa" | "m2m";
   allowedCallbackUrls: string[];
   allowedLogoutUrls: string[];
   idTokenExpiry: number;
-  refreshTokenRotation: true;
+  refreshTokenRotation: boolean;
   refreshTokenExpiry: number;
   grantTypes: string[];
-  scopes: string[];
   clientName: string;
+  api: ClientApi;
 };

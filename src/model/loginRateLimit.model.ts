@@ -119,4 +119,16 @@ const consume = async (
     });
 };
 
-export default { consume };
+const deleteDocumentByKey = async (key: string): Promise<RateLimitResponse> => {
+  const funcName = deleteDocumentByKey.name;
+  log.info(`${funcName}: consuming rate limit point for key (${key})`);
+  return LoginRateLimitModel.findOneAndDelete({ key: key }).catch(error => {
+    log.error(
+      `${funcName}: something went wrong while find and updating LoginRateLimitDocument document ${JSON.stringify(
+        key
+      )} with error: ${error}`
+    );
+  });
+};
+
+export default { consume, deleteDocumentByKey };

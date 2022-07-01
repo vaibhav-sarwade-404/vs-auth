@@ -1,4 +1,6 @@
 import { NextFunction, Request, Response } from "express";
+
+import forgotPasswordRateLimitService from "../service/forgotPasswordRateLimit.service";
 import loginRateLimitService from "../service/loginRateLimit.service";
 import userInfoRateLimitService from "../service/userInfoRateLimit.service";
 import { RateLimitResponse } from "../types/Response";
@@ -57,12 +59,10 @@ const userInfo = async (req: Request, resp: Response, next: NextFunction) => {
   const funcName = `${fileName}.${userInfo.name}`;
 
   const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
-  const key = `${constants.RATE_LIMIT_KEYS.userInfoApi}${ip}`;
+  const session = req.session;
+  const key = `${constants.RATE_LIMIT_KEYS.userInfoApi}${session.id}_${ip}`;
   const userInfoRateLimitResponseDocument: RateLimitResponse =
-    await userInfoRateLimitService.consume(
-      `${constants.RATE_LIMIT_KEYS.userInfoApi}${ip}`,
-      1
-    );
+    await userInfoRateLimitService.consume(key, 1);
   if (userInfoRateLimitResponseDocument) {
     log.info(`${funcName}: Rate limit reached for key ${key}, returning 429`);
     return prepareAndSendRateLimitResponse(
@@ -74,7 +74,29 @@ const userInfo = async (req: Request, resp: Response, next: NextFunction) => {
   next();
 };
 
+const forgotPassword = async (
+  req: Request,
+  resp: Response,
+  next: NextFunction
+) => {
+  const funcName = `${fileName}.${forgotPassword.name}`;
+  const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
+  const key = `${constants.RATE_LIMIT_KEYS.forgotPassword}${ip}`;
+  const forgotPasswordRLReponseDocument: RateLimitResponse =
+    await forgotPasswordRateLimitService.consume(key, 1);
+  if (forgotPasswordRLReponseDocument) {
+    log.info(`${funcName}: Rate limit reached for key ${key}, returning 429`);
+    return prepareAndSendRateLimitResponse(
+      resp,
+      next,
+      forgotPasswordRLReponseDocument
+    );
+  }
+  next();
+};
+
 export default {
   login,
-  userInfo
+  userInfo,
+  forgotPassword
 };

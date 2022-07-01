@@ -1,12 +1,15 @@
 import { JSDOM } from "jsdom";
-import { LoginPageConfig } from "../types/LoginPageInjectConfig";
+import {
+  LoginPageConfig,
+  PasswordResetConfig
+} from "../types/LoginPageInjectConfig";
 import { PageDocument } from "../types/PagesModel";
 
 import { toBase64 } from "../utils/crypto";
 
 const parseDocAndInjectDataConfig = (
   page: PageDocument,
-  objectToInject: LoginPageConfig
+  objectToInject: LoginPageConfig | PasswordResetConfig
 ): string => {
   const dom = new JSDOM(page.html);
   const scriptEle = dom.window.document.createElement("script");

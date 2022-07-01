@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import AuthorizationError from "../model/AuthorizationError.model";
 
 import authorizationcodeService from "../service/authorizationcode.service";
 import logService from "../service/log.service";
@@ -68,12 +69,12 @@ export default async (req: Request, resp: Response, next: NextFunction) => {
     log.error(
       `${funcName}: Something went wrong while retriving session to check authentication with error: ${error}`
     );
-    return resp
-      .status(302)
-      .redirect(
-        `/error/?client_id=${clientId}&state=${state}&error=unauthorized&error_description=${encodeURIComponent(
-          "Authorization error while retriving session"
-        )}`
-      );
+    const validationError = new AuthorizationError();
+    validationError.addQueryParam = { field: "client_id", value: clientId };
+    validationError.addQueryParam = { field: "state", value: state };
+    validationError.error = "unauthorized";
+    validationError.errorDescription =
+      "Authorization error while retriving session";
+    return next(validationError);
   }
 };

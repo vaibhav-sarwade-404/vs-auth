@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 
 import usersService from "../service/users.service";
 import tokenService from "../service/token.service";
@@ -11,19 +11,23 @@ import {
 } from "../types/TokenModel";
 import refreshTokenService from "../service/refreshToken.service";
 import logService from "../service/log.service";
+import clientsService from "../service/clients.service";
+import RequestValidationError from "../model/RequestValidationError.Model";
+import HttpException, { UnauthorizedError } from "../model/HttpException";
+import { UserDocument } from "../types/UsersModel";
 
 const token = async (req: Request, resp: Response) => {
   const funcName = `oauth.controller.${token.name}`;
   try {
     const {
       grant_type,
-      redirect_uri: callbackURL,
+      redirect_uri: callbackURL = "",
       client_id: clientId = ""
     }: TokenRequest = req.body || {};
     const {
       userId = "",
       isAuthenticated = false,
-      scope = "",
+      scope = "", //remove it from here read it form body
       audience = "",
       _sessionId
     } = req.session.user;
@@ -114,7 +118,62 @@ const userinfo = async (req: Request, resp: Response) => {
   }
 };
 
+const tokenNew = async (req: Request, resp: Response, next: NextFunction) => {
+  const funcName = `oauth.controller.${token.name}`;
+  try {
+    const {
+      grant_type,
+      redirect_uri: callbackURL = "",
+      client_id: clientId = "",
+      scope = ""
+    }: TokenRequest = req.body || {};
+    const {
+      userId = "",
+      _sessionId,
+      apiDocument = {
+        identifier: "",
+        name: "",
+        permissions: [""],
+        tokenExpiry: 0,
+        tokenSigningAlgo: "",
+        type: ""
+      }
+    } = req.session.user || {};
+    let userDocument: UserDocument = {
+      email: "",
+      email_verified: false,
+      password: "",
+      passwordHistory: [],
+      _id: "",
+      blocked_for: [],
+      login_count: 0,
+      user_metadata: { firstName: "", lastName: "" }
+    };
+    if (userId) {
+      userDocument = await usersService.findUserById(userId);
+    }
+    const tokenResponse = await tokenService.prepareTokenResponse({
+      callbackURL,
+      clientId,
+      grant_type,
+      scope,
+      sessionId: _sessionId || "",
+      user: userDocument,
+      apiDocument
+    });
+    if (tokenResponse) {
+      return resp.status(200).send(tokenResponse);
+    }
+  } catch (error) {
+    log.error(
+      `${funcName}: Something went wrong while generating token reponse with error: ${error}`
+    );
+    return next(new HttpException());
+  }
+};
+
 export default {
   token,
-  userinfo
+  userinfo,
+  tokenNew
 };

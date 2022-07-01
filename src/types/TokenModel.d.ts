@@ -1,10 +1,13 @@
-import { UsersDocument } from "./UsersModel";
+import { UserDocument } from "./UsersModel";
 
-export type GrantTypes = "authorization_code" | "refresh_token";
+export type GrantTypes =
+  | "authorization_code"
+  | "refresh_token"
+  | "client_credentials";
 
 export type CreateJWTPayload = {
   clientId: string;
-  user: UsersDocument;
+  user: UserDocument;
   scope: string = "openid profile email";
   grant_type: GrantTypes;
   callbackURL: string;

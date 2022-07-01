@@ -16,10 +16,8 @@ const hashPassword = async (password: string): Promise<string> | never => {
   }
 };
 
-const comparePassword = async (
-  password: string,
-  hash: string
-): Promise<boolean> => bcrypt.compareSync(password, hash);
+const comparePassword = (password: string, passwordHash: string): boolean =>
+  bcrypt.compareSync(password, passwordHash);
 
 export default {
   hashPassword,
